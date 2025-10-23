@@ -1,0 +1,11 @@
+﻿# Python
+__pycache__/
+*.pyc
+
+# Virtual Environment
+venv/
+.venv/
+
+# Data dan Kredensial Sensitif
+client_secret.json
+token.json
