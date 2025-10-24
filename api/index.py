@@ -12,27 +12,21 @@ from googleapiclient.discovery import build
 from dotenv import load_dotenv
 load_dotenv() 
 
-# --- KONSTANTA KONFIGURASI APLIKASI ---
-
-# Ambil dari Environment Variable (ENV) jika ada, jika tidak, gunakan nilai default
 SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID', '1TkOeAMhwlmG1WftjAyJAlSBYzbR-JPum4sTIKliPtss')
 SUMMARY_ROUTE = os.environ.get('SUMMARY_ROUTE', 'summary')
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
-# File Kredensial Lokal (Hanya untuk pengembangan lokal)
 CLIENT_SECRET_FILE = 'client_secret.json'
 TOKEN_FILE = 'token.json'
 
-# Range Default
 RANGE_KESALAHAN_DEFAULT = 'A1:C'
 RANGE_STAFF_DEFAULT = 'H1:AH'
 
-SHEETS_TO_HIDE = ['POIN-POIN KESALAHAN LC', 'LEADER', 'DIBANTU NOTE 1X', 'POIN-POIN KESALAHAN']
+SHEETS_TO_HIDE = ['POIN-POIN KESALAHAN', 'LEADER', 'DIBANTU NOTE 1X', 'POIN-POIN KESALAHAN']
 SHEET_KHUSUS = {
-    'POIN-POIN KESALAHAN': 'A3:C',
+    'POIN-POIN KESALAHAN LC': 'A3:C',
 }
 
-# --- KONSTANTA BARU: Pemetaan Situs ke Leader ---
 LEADER_MAPPING = {
     'DEPOBOS': 'HENDY R',
     'GENGTOTO': 'DANIEL',
@@ -86,8 +80,6 @@ LEADER_MAPPING = {
 
 app = Flask(__name__)
 SHEETS_SERVICE = None
-
-# --- FILTER JINJA2 ---
 
 def render_cell(cell_content):
     if not isinstance(cell_content, str):
@@ -146,9 +138,7 @@ def render_cell(cell_content):
     return final_output
 
 def format_number(value):
-    """Memformat bilangan bulat dengan pemisah ribuan (misalnya 4643 menjadi 4,643)."""
     if isinstance(value, (int, float)):
-        # Menggunakan ',' sebagai pemisah ribuan.
         return f"{value:,.0f}" if isinstance(value, float) else f"{value:,}"
     return str(value)
 
@@ -156,18 +146,14 @@ app.jinja_env.filters['render_cell'] = render_cell
 app.jinja_env.filters['format_number'] = format_number
 app.jinja_env.globals['enumerate'] = enumerate
 
-# --- FUNGSI GOOGLE SHEETS API (MODIFIKASI UNTUK VERCEL & LOKAL) ---
-
 def init_sheets_service():
     creds = None
     
-    # 1. Cek Environment Variables (Untuk Vercel)
     token_json_str = os.environ.get('TOKEN_JSON')
     client_secret_json_str = os.environ.get('CLIENT_SECRET_JSON')
 
     if token_json_str and client_secret_json_str:
         try:
-            # Menggunakan Credentials dari ENV
             token_info = json.loads(token_json_str)
             creds = Credentials.from_authorized_user_info(token_info, SCOPES)
             
@@ -178,7 +164,6 @@ def init_sheets_service():
             print(f"Gagal memuat/refresh token dari ENV: {e}")
             creds = None
 
-    # 2. Cek File Lokal (Untuk Pengembangan Lokal)
     local_token_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', TOKEN_FILE)
     local_client_secret_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', CLIENT_SECRET_FILE)
     
@@ -187,7 +172,6 @@ def init_sheets_service():
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            # Refresh token yang diambil dari file lokal
             try:
                 creds.refresh(Request())
                 with open(local_token_path, 'w') as token:
@@ -196,7 +180,6 @@ def init_sheets_service():
                 print(f"Gagal me-refresh token lokal: {e}")
                 creds = None
         else:
-            # Otentikasi baru (Hanya berfungsi di lokal)
             if os.path.exists(local_client_secret_path):
                 print("Melakukan otentikasi baru...")
                 flow = InstalledAppFlow.from_client_secrets_file(
@@ -207,10 +190,10 @@ def init_sheets_service():
                     token.write(creds.to_json())
             else:
                 print(f"ERROR: Kredensial lokal '{CLIENT_SECRET_FILE}' tidak ditemukan di root.")
-                return None # Mengembalikan None jika gagal
+                return None 
     
     if not creds or not creds.valid:
-        return None # Mengembalikan None jika kredensial tidak valid setelah semua upaya
+        return None 
 
     return build('sheets', 'v4', credentials=creds)
 
@@ -285,7 +268,6 @@ def get_sheet_data(service, sheet_name, range_name, expected_columns=None):
         return []
 
 def get_batch_sheet_data(service, ranges):
-    """Mengambil data dari beberapa range sheet dalam satu panggilan API."""
     if not ranges:
         return []
     
@@ -301,14 +283,7 @@ def get_batch_sheet_data(service, ranges):
         print(f"Terjadi kesalahan saat mengakses Google Sheets API dengan batchGet: {e}")
         return []
 
-
 def calculate_sheet_total(staff_data):
-    """
-    Menghitung total kesalahan staff dari data yang diberikan
-    dan memisahkan baris total jika ada.
-    
-    Mengembalikan: (total_kesalahan_staff, cleaned_rows)
-    """
     if not staff_data or len(staff_data) < 2:
         return 0, []
 
@@ -317,27 +292,24 @@ def calculate_sheet_total(staff_data):
     cleaned_rows = []
 
     if staff_rows and len(staff_rows[0]) > 1:
-        # 1. Cek apakah baris terakhir adalah baris TOTAL
         last_row = staff_rows[-1]
         is_total_row = False
         try:
             if last_row and last_row[0] and last_row[0].strip().lower() == 'total':
-                total_str = last_row[1].strip().replace(',', '') # Hapus pemisah ribuan
+                total_str = last_row[1].strip().replace(',', '') 
                 num_match = re.search(r'\d+', total_str)
                 if num_match:
                     total_kesalahan_staff = int(num_match.group(0))
                     is_total_row = True
-                cleaned_rows = staff_rows[:-1] # Hapus baris total
+                cleaned_rows = staff_rows[:-1] 
             
-            # 2. Jika tidak ada baris TOTAL, hitung manual
             if not is_total_row:
                 for row in staff_rows:
                     if len(row) > 1:
-                        # Membersihkan string angka (misalnya "4,643" menjadi "4643")
                         num_str = re.sub(r'[^\d]', '', row[1].strip())  
                         if num_str.isdigit():
                             total_kesalahan_staff += int(num_str)
-                        cleaned_rows.append(row) # Simpan semua baris staff
+                        cleaned_rows.append(row) 
 
         except Exception as e:
             print(f"Gagal menghitung total kesalahan staff: {e}")
@@ -346,36 +318,58 @@ def calculate_sheet_total(staff_data):
 
     return total_kesalahan_staff, cleaned_rows
 
-# --- ROUTE APLIKASI ---
-
 @app.route('/')
 def home():
     return redirect(url_for('show_summary')) 
 
 @app.route(f'/{SUMMARY_ROUTE}')
 def show_summary():
-    sheet_names = get_sheet_names(SHEETS_SERVICE)
-    summary_data = [] # Ringkasan Situs
-    grand_total = 0 # Total Situs
+    sheet_names_from_api = get_sheet_names(SHEETS_SERVICE) 
     
-    staff_summary_map = {} # Total KESELURUHAN staff untuk pengurutan
+    leader_mapped_sites_uppercase = set(LEADER_MAPPING.keys())
+
+    sheets_to_process = [name for name in sheet_names_from_api if name not in SHEET_KHUSUS]
+    
+    all_unique_site_names = set(sheets_to_process)
+    
+    for site_name_upper in leader_mapped_sites_uppercase:
+        all_unique_site_names.add(site_name_upper) 
+        all_unique_site_names.add(site_name_upper.title()) 
+
+    final_sheets_to_read = [name for name in all_unique_site_names 
+                            if name not in SHEET_KHUSUS and name.upper() in leader_mapped_sites_uppercase]
+    
+    final_sheets_to_read = sorted(list(set(final_sheets_to_read)))
+    
+    all_sites_map = {}
+    for site_upper in leader_mapped_sites_uppercase:
+        all_sites_map[site_upper] = { 
+            'total': 0,
+            'url': url_for('show_data', sheet_name=site_upper)
+        }
+        
+    grand_total = 0 
+    staff_summary_map = {} 
     staff_list_details = []
-    
-    # Struktur untuk Ringkasan Leader
     leader_summary_map = {}
     
-    sheets_to_process = [name for name in sheet_names if name not in SHEET_KHUSUS]
+    # Kumpulan semua nama staff yang mungkin (termasuk Leader, untuk staff 0)
+    # Ini akan diisi di bawah, dan Leader akan ditambahkan secara terpisah.
     
     ranges_to_get = []
     for sheet_name in sheets_to_process:
-        # Mengambil range staff dari setiap sheet
         ranges_to_get.append(f"'{sheet_name}'!{RANGE_STAFF_DEFAULT}")
     
-    # Panggilan Batch Get
     batch_results = get_batch_sheet_data(SHEETS_SERVICE, ranges_to_get)
     
+    # Kumpulkan semua nama Leader/Staff untuk memastikan staff 0 yang merupakan leader juga muncul
+    all_staff_names_from_leaders = {name.strip().upper() for name in LEADER_MAPPING.values()}
+
     for i, sheet_name in enumerate(sheets_to_process):
-        if i < len(batch_results):
+        
+        site_key_upper = sheet_name.strip().upper() 
+        
+        if i < len(batch_results) and site_key_upper in all_sites_map:
             result_range = batch_results[i]
             staff_data = result_range.get('values', [])
             
@@ -385,43 +379,56 @@ def show_summary():
             
             total_situs, staff_rows = calculate_sheet_total(filtered_staff_data)
             
-            # --- 1. Memproses Ringkasan Situs ---
-            if total_situs > 0:
-                summary_data.append({
-                    'name': sheet_name,
-                    'total': total_situs,
-                    'url': url_for('show_data', sheet_name=sheet_name)  
-                })
-                grand_total += total_situs
-                
-                # Agregasi Total ke Leader
-                leader_name = LEADER_MAPPING.get(sheet_name.strip().upper())
-                if leader_name:
-                    # leader_summary_map menyimpan total kesalahan PER LEADER
-                    leader_summary_map[leader_name] = leader_summary_map.get(leader_name, 0) + total_situs
+            all_sites_map[site_key_upper]['total'] = total_situs 
+            grand_total += total_situs
+            
+            leader_name = LEADER_MAPPING.get(site_key_upper)
+            if leader_name:
+                leader_summary_map[leader_name] = leader_summary_map.get(leader_name, 0) + total_situs
                     
-            # --- 2. Memproses Ringkasan Staff (Pengumpulan Detail) ---
             for row in staff_rows:
-                # Kolom 0 adalah NAMA, Kolom 1 adalah TOTAL
                 if len(row) > 1:
                     staff_name = row[0].strip().upper()
-                    # Membersihkan string angka (misalnya "4,643" menjadi "4643")
+                    # Pastikan nama staff valid sebelum diproses
+                    if not staff_name or staff_name.lower() == 'total':
+                        continue
+                        
                     num_str = re.sub(r'[^\d]', '', row[1].strip()) 
                     staff_total = int(num_str) if num_str.isdigit() else 0
                     
-                    if staff_name and staff_total > 0:
-                        # Menambahkan detail kesalahan per staff/situs
+                    # Tambahkan staff ke kumpulan Leader/Staff, siapa tahu dia staff non-Leader
+                    all_staff_names_from_leaders.add(staff_name) 
+                    
+                    if staff_name: 
                         staff_list_details.append({
                             'name': staff_name,
-                            'situs': sheet_name, # Nama situs
+                            'situs': sheet_name, 
                             'total': staff_total
                         })
-                        # Agregasi total keseluruhan untuk staff_summary_map
+                        
+                        # Inisialisasi atau perbarui total staff
                         staff_summary_map[staff_name] = staff_summary_map.get(staff_name, 0) + staff_total
+
+    # --- Bagian Baru: Inisialisasi staff 0 yang belum terdaftar ---
+    # Inisialisasi staff yang namanya sudah dikumpulkan, tapi belum ada di staff_summary_map 
+    # (Ini hanya akan terjadi jika staff ada di daftar Leader TAPI TIDAK PERNAH muncul di baris data Sheets manapun)
+    # ATAU staff muncul di baris data Sheets TAPI HANYA header staff yang muncul, bukan datanya.
+    for staff_name in all_staff_names_from_leaders:
+        if staff_name not in staff_summary_map:
+             staff_summary_map[staff_name] = 0
+    # --- Akhir Bagian Baru ---
     
-    # --- 3. Finalisasi Data Ringkasan Staff (Pengelompokan & Pengurutan) ---
+    summary_data = []
+    for site_upper, details in all_sites_map.items():
+        summary_data.append({
+            'name': site_upper.title(), 
+            'total': details['total'],
+            'url': url_for('show_data', sheet_name=site_upper)
+        })
+        
+    summary_data.sort(key=lambda x: x['total'], reverse=True)
     
-    # Kumpulkan semua nama staff unik dan urutkan berdasarkan total keseluruhan (menurun)
+    # Kumpulkan SEMUA nama staff unik dari map yang kini sudah berisi staff 0
     unique_staff_names = sorted(
         staff_summary_map.keys(),
         key=lambda name: (-staff_summary_map[name], name)
@@ -431,7 +438,6 @@ def show_summary():
     current_staff_index = 0
     staff_grand_total = 0 
 
-    # Peta sementara untuk mengelompokkan detail situs per staff
     grouped_details = {} 
     
     for item in staff_list_details:
@@ -440,52 +446,54 @@ def show_summary():
             grouped_details[name] = []
         grouped_details[name].append({'situs': item['situs'], 'total': item['total']})
     
-    # Membangun final_summary_staff_data dengan format yang diinginkan
     for name in unique_staff_names:
         current_staff_index += 1
         total_keseluruhan = staff_summary_map[name]
         
-        # Urutkan situs berdasarkan total
-        details = sorted(grouped_details[name], key=lambda x: x['total'], reverse=True)
+        # Gunakan .get(name, []) untuk menangani staff yang totalnya 0 (detail akan kosong [])
+        details = sorted(grouped_details.get(name, []), key=lambda x: x['total'], reverse=True)
         
-        # Menggabungkan nama situs dan total per situs
         list_situs_dan_total = []
         for detail in details:
-             list_situs_dan_total.append(f"{detail['situs']} ({format_number(detail['total'])})") 
-
+            # Kita tetap ingin menampilkan (0) jika ada detail situs (0)
+            list_situs_dan_total.append(f"{detail['situs']} ({format_number(detail['total'])})") 
+        
         situs_gabungan = " / ".join(list_situs_dan_total)
         
+        # Jika totalnya 0 dan tidak ada detail situs yang digabungkan, tampilkan pesan kustom
+        if total_keseluruhan == 0 and not situs_gabungan:
+             situs_gabungan = "TIDAK ADA KESALAHAN (0)"
+
+
         final_summary_staff_data.append({
             'no': current_staff_index,
             'name': name,
-            # Situs digabungkan dengan format: NAMA_SITUS_1 (TOTAL) / NAMA_SITUS_2 (TOTAL)
             'situs_details': situs_gabungan, 
             'grand_total_staff': total_keseluruhan
         })
         
         staff_grand_total += total_keseluruhan
-    
-    # Urutkan ringkasan situs
-    summary_data.sort(key=lambda x: x['total'], reverse=True)
-    
-    # --- 4. Finalisasi Data Ringkasan Leader (Pengelompokan & Pengurutan) ---
+        
+    # (Sisa kode untuk Leader Summary tetap sama)
     final_summary_leader_data = []
     leader_grand_total = 0
-    
-    # Kumpulkan detail situs per Leader
     leader_details_map = {}
-    for item in summary_data:
-        situs_name = item['name'].strip().upper()
-        leader_name = LEADER_MAPPING.get(situs_name)
+    
+    for original_situs_name_upper, details in all_sites_map.items(): 
+        
+        leader_name = LEADER_MAPPING.get(original_situs_name_upper)
+
         if leader_name:
             if leader_name not in leader_details_map:
                 leader_details_map[leader_name] = {'total': 0, 'sites': []}
             
-            leader_details_map[leader_name]['total'] += item['total']
-            # Simpan detail situs untuk digabungkan di kolom 'NAMA SITUS'
-            leader_details_map[leader_name]['sites'].append({'name': item['name'], 'total': item['total']})
+            leader_details_map[leader_name]['total'] += details['total']
+            
+            leader_details_map[leader_name]['sites'].append({
+                'name': original_situs_name_upper.title(), 
+                'total': details['total']
+            })
 
-    # Mengurutkan Leader berdasarkan total kesalahan (menurun)
     sorted_leaders = sorted(
         leader_details_map.keys(), 
         key=lambda name: (-leader_details_map[name]['total'], name)
@@ -496,10 +504,8 @@ def show_summary():
         current_leader_index += 1
         total = leader_details_map[leader_name]['total']
         
-        # Urutkan situs di bawah leader berdasarkan total
         sites_details = sorted(leader_details_map[leader_name]['sites'], key=lambda x: x['total'], reverse=True)
         
-        # Gabungkan nama situs dan total per situs menjadi satu string
         site_list_str = [f"{site['name']} ({format_number(site['total'])})" for site in sites_details]
         
         situs_gabungan = " / ".join(site_list_str)
@@ -512,20 +518,17 @@ def show_summary():
         })
         
         leader_grand_total += total
-
-    
+        
     return render_template('index.html',
-                           current_sheet='Summary',
-                           sheet_names=sheet_names,
-                           summary_data=summary_data, # Ringkasan Situs
-                           grand_total=grand_total, # Total Situs
-                           summary_staff_data=final_summary_staff_data, # Ringkasan Staff
-                           staff_grand_total=staff_grand_total, # Total Staff KESELURUHAN
-                           
-                           # Ringkasan Leader
-                           summary_leader_data=final_summary_leader_data,
-                           leader_grand_total=leader_grand_total 
-                           )
+                            current_sheet='Summary',
+                            sheet_names=sheet_names_from_api,
+                            summary_data=summary_data, 
+                            grand_total=grand_total, 
+                            summary_staff_data=final_summary_staff_data, 
+                            staff_grand_total=staff_grand_total, 
+                            summary_leader_data=final_summary_leader_data,
+                            leader_grand_total=leader_grand_total 
+                            )
 
 @app.route('/<sheet_name>')
 def show_data(sheet_name):
@@ -539,7 +542,6 @@ def show_data(sheet_name):
     staff_rows = []
     total_kesalahan_staff = 0 
 
-    # 1. Penanganan Sheet Khusus
     if sheet_name in SHEET_KHUSUS:
         range_kesalahan = SHEET_KHUSUS[sheet_name]
 
@@ -552,11 +554,9 @@ def show_data(sheet_name):
 
         kesalahan_headers = ["Kode", "Poin Kesalahan", "Ketentuan"] 
 
-    # 2. Penanganan Sheet Normal
     else:
         TARGET_KESALAHAN_HEADERS = ["Nama Staff", "Link Kesalahan", "Poin Kesalahan"]
 
-        # Mengambil data Kesalahan dan Staff dalam 1 panggilan batch
         ranges_for_sheet = [
             f"'{sheet_name}'!{RANGE_KESALAHAN_DEFAULT}",
             f"'{sheet_name}'!{RANGE_STAFF_DEFAULT}"
@@ -567,7 +567,6 @@ def show_data(sheet_name):
         kesalahan_data_with_header = batch_results[0].get('values', []) if len(batch_results) > 0 else []
         staff_data = batch_results[1].get('values', []) if len(batch_results) > 1 else []
         
-        # Pembersihan data kesalahan
         filtered_kesalahan_data = [
             row for row in kesalahan_data_with_header if any(cell and cell.strip() for cell in row)
         ]
@@ -581,7 +580,6 @@ def show_data(sheet_name):
             kesalahan_headers = TARGET_KESALAHAN_HEADERS
             kesalahan_data = []
 
-        # Pembersihan data staff
         filtered_staff_data = [
             row for row in staff_data if any(cell and cell.strip() for cell in row)
         ]
@@ -591,16 +589,14 @@ def show_data(sheet_name):
         total_kesalahan_staff, staff_rows = calculate_sheet_total(filtered_staff_data)
 
     return render_template('index.html',
-                           kesalahan_headers=kesalahan_headers,
-                           kesalahan_data=kesalahan_data,
-                           staff_headers=staff_headers,
-                           staff_rows=staff_rows,
-                           current_sheet=sheet_name,
-                           sheet_names=sheet_names,
-                           total_kesalahan_staff=total_kesalahan_staff,
-                           SHEET_KHUSUS=SHEET_KHUSUS)
-
-# --- INISIALISASI APLIKASI ---
+                            kesalahan_headers=kesalahan_headers,
+                            kesalahan_data=kesalahan_data,
+                            staff_headers=staff_headers,
+                            staff_rows=staff_rows,
+                            current_sheet=sheet_name,
+                            sheet_names=sheet_names,
+                            total_kesalahan_staff=total_kesalahan_staff,
+                            SHEET_KHUSUS=SHEET_KHUSUS)
 
 try:
     SHEETS_SERVICE = init_sheets_service()

@@ -370,6 +370,44 @@
                 </div>
 
                 <div class="table-summary-leader table-summary" style="max-height: calc(100vh - 150px); overflow-y: auto; overflow-x: auto;">
+                    <h2>Ringkasan Total Kesalahan per Staff</h2>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 5%; text-align: center;">NO</th> 
+                                <th style="width: 35%;">NAMA</th>
+                                <th style="width: 40%;">SITUS (Total Per Situs)</th> 
+                                <th style="width: 20%; text-align: right;">TOTAL KESELURUHAN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if summary_staff_data %}
+                                {% for item in summary_staff_data %}
+                                <tr class="staff-row {% if loop.index > 1 %}staff-change-row{% endif %}">
+                                    <td style="text-align: center; font-weight: 500;">{{ item.no }}</td> 
+                                    <td><strong style="color: #2d3748;">{{ item.name }}</strong></td>
+                                    <td>{{ item.situs_details }}</td> 
+                                    <td style="text-align: right; font-weight: 700;">{{ item.grand_total_staff | format_number }}</td>
+                                </tr>
+                                {% endfor %}
+
+                                <tr class="summary-total" style="border-top: 5px double white;">
+                                    <td style="background-color: #38a169;"></td> 
+                                    <td colspan="2" style="background-color: #38a169; text-align: right;">GRAND TOTAL KESELURUHAN</td>
+                                    <td style="background-color: #38a169; text-align: right;">{{ staff_grand_total | format_number }}</td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" style="text-align: center; color: #718096; padding: 20px;"> 
+                                        Tidak ada data ringkasan staff yang ditemukan.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="table-summary-staff" style="max-height: calc(100vh - 150px); overflow-y: auto; overflow-x: auto;">
                     <h2>Ringkasan Total Kesalahan per Leader</h2>
                     <table class="data-table">
                         <thead>
@@ -402,44 +440,6 @@
                                 <tr>
                                     <td colspan="4" style="text-align: center; color: #718096; padding: 20px;"> 
                                         Tidak ada data ringkasan leader yang ditemukan (periksa mapping situs).
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="table-summary-staff" style="max-height: calc(100vh - 150px); overflow-y: auto; overflow-x: auto;"> 
-                    <h2>Ringkasan Total Kesalahan per Staff</h2>
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 5%; text-align: center;">NO</th> 
-                                <th style="width: 35%;">NAMA</th>
-                                <th style="width: 40%;">SITUS (Total Per Situs)</th> 
-                                <th style="width: 20%; text-align: right;">TOTAL KESELURUHAN</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if summary_staff_data %}
-                                {% for item in summary_staff_data %}
-                                <tr class="staff-row {% if loop.index > 1 %}staff-change-row{% endif %}">
-                                    <td style="text-align: center; font-weight: 500;">{{ item.no }}</td> 
-                                    <td><strong style="color: #2d3748;">{{ item.name }}</strong></td>
-                                    <td>{{ item.situs_details }}</td> 
-                                    <td style="text-align: right; font-weight: 700;">{{ item.grand_total_staff | format_number }}</td>
-                                </tr>
-                                {% endfor %}
-
-                                <tr class="summary-total" style="border-top: 5px double white;">
-                                    <td style="background-color: #38a169;"></td> 
-                                    <td colspan="2" style="background-color: #38a169; text-align: right;">GRAND TOTAL KESELURUHAN</td>
-                                    <td style="background-color: #38a169; text-align: right;">{{ staff_grand_total | format_number }}</td>
-                                </tr>
-                            {% else %}
-                                <tr>
-                                    <td colspan="4" style="text-align: center; color: #718096; padding: 20px;"> 
-                                        Tidak ada data ringkasan staff yang ditemukan.
                                     </td>
                                 </tr>
                             {% endif %}
