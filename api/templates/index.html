@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <title>Kesalahan Livechat ({{ current_sheet if current_sheet else 'Live' }})</title>
+
+    {# --- VERCEL WEB ANALYTICS --- #}
     <script src="/_vercel/insights/script.js" defer></script>
     <script src="/_vercel/speed-insights/script.js"></script>
+    {# --------------------------- #}
+
+    {# --- GOOGLE ANALYTICS --- #}
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-KV2KNVBYGD"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
@@ -13,6 +18,8 @@
 
         gtag('config', 'G-KV2KNVBYGD');
     </script>
+    {# ------------------------ #}
+
     <style>
         /* SCROLLBAR STYLES */
         .sidebar::-webkit-scrollbar {
@@ -161,8 +168,8 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             border-radius: 8px;
             background-color: white;
-            max-height: calc(100vh - 120px); /* Tambahkan batasan tinggi di sini */
-            overflow-y: auto;               /* Tambahkan scroll di sini */
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
         }
         /* Akhir tata letak kiri-kanan */
 
