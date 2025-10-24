@@ -84,7 +84,7 @@ LEADER_MAPPING = {
     'INDOJP': 'MUHAMMAD RIO PRATAMA'
 }
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../static')
 SHEETS_SERVICE = None
 
 # --- FILTER JINJA2 ---
