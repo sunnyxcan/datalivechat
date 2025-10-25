@@ -2,6 +2,7 @@ import os
 import re
 import json
 from urllib.parse import unquote
+from datetime import datetime
 
 from flask import Flask, render_template, redirect, url_for
 from google.auth.transport.requests import Request
@@ -86,6 +87,8 @@ LEADER_MAPPING = {
 
 app = Flask(__name__, static_folder='../static')
 SHEETS_SERVICE = None
+
+app.jinja_env.globals['current_year'] = datetime.now().year
 
 # --- FILTER JINJA2 ---
 
@@ -350,7 +353,7 @@ def calculate_sheet_total(staff_data):
 
 @app.route('/')
 def home():
-    return redirect(url_for('show_summary')) 
+    return render_template('welcome.html', summary_route=SUMMARY_ROUTE)
 
 @app.route(f'/{SUMMARY_ROUTE}')
 def show_summary():
@@ -413,7 +416,7 @@ def show_summary():
             leader_name = LEADER_MAPPING.get(site_key_upper)
             if leader_name:
                 leader_summary_map[leader_name] = leader_summary_map.get(leader_name, 0) + total_situs
-                    
+                        
             for row in staff_rows:
                 if len(row) > 1:
                     staff_name = row[0].strip().upper()
@@ -555,7 +558,7 @@ def show_summary():
         leader_grand_total += total
         
     return render_template('index.html',
-                            current_sheet='Summary',
+                            current_sheet='Ringkasan Total', # <--- INI PERUBAHAN UTAMANYA!
                             sheet_names=sheet_names_from_api,
                             summary_data=summary_data, 
                             grand_total=grand_total, 

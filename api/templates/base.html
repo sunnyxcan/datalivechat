@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Kesalahan Livechat{% endblock %}</title>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}">
+
+    {# --- TAUTAN KE CDN TAILWIND CSS --- #}
+    <script src="https://cdn.tailwindcss.com"></script>
+    {# --------------------------------- #}
+
+    {# --- VERCEL WEB ANALYTICS & GOOGLE ANALYTICS (TETAP) --- #}
+    <script src="/_vercel/insights/script.js" defer></script>
+    <script src="/_vercel/speed-insights/script.js"></script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-9PE8B44WV0"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-9PE8B44WV0');
+    </script>
+    {# ----------------------------------------------------- #}
+    
+    <style>
+        /* SCROLLBAR STYLES - TETAP PERLU UNTUK CUSTOMISASI DETAIL SCROLLBAR DI WEBKIT */
+        .sidebar-custom::-webkit-scrollbar { width: 8px; }
+        .sidebar-custom::-webkit-scrollbar-track { background: #1f2937; } /* bg-gray-800 dark */
+        .sidebar-custom::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; } /* bg-gray-600 */
+        .sidebar-custom::-webkit-scrollbar-thumb:hover { background: #6b7280; } /* bg-gray-500 */
+
+        .main-content-custom::-webkit-scrollbar { width: 8px; }
+        .main-content-custom::-webkit-scrollbar-track { background: #f9fafb; } /* bg-gray-50 light */
+        .main-content-custom::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; } /* bg-gray-400 */
+        .main-content-custom::-webkit-scrollbar-thumb:hover { background: #6b7280; } /* bg-gray-500 */
+        
+        /* GAYA UNTUK STICKY COLUMN: DIBUTUHKAN CSS TRADISIONAL UNTUK BEBERAPA PROPERTI STICKY KOMPLEKS */
+        .sticky-col-header { 
+            position: sticky !important; 
+            left: 0 !important; 
+            top: 0;
+            z-index: 20 !important; /* Lebih tinggi dari th normal (z-10) */
+            border-right: 3px solid #6b7280 !important; /* border-r-3 border-gray-500 */
+            background-color: #1f2937 !important; /* bg-gray-900 */
+        }
+        .sticky-col-cell { 
+            position: sticky !important; 
+            left: 0 !important; 
+            z-index: 15 !important; 
+            border-right: 3px solid #6b7280 !important; 
+        }
+
+        /* GAYA UNTUK LINK DI DETAIL KESALAHAN */
+        .table-kesalahan a {
+            color: #3b82f6; /* Tailwind blue-500 */
+            text-decoration: none; /* Menghilangkan underline default */
+            font-weight: 500; /* Menjadi medium */
+        }
+        .table-kesalahan a:hover {
+            color: #2563eb; /* Tailwind blue-600 */
+            text-decoration: underline; /* Menambahkan underline saat hover */
+        }
+
+        /* GAYA UNTUK HOVER STICKY CELL */
+        .staff-table-body tr:nth-child(even) .sticky-col-cell { background-color: #f3f4f6; /* bg-gray-50 */ }
+        .staff-table-body tr:nth-child(odd) .sticky-col-cell { background-color: #ffffff; /* bg-white */ }
+        .staff-table-body tr:hover .sticky-col-cell { background-color: #c7d2fe !important; color: black !important;}
+        .summary-total .sticky-col-cell { background-color: #10b981 !important; /* bg-emerald-500 */ }
+
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-800 flex bg-gray-50 min-h-screen">
+    
+    {% if sheet_names %}
+    {# SIDEBAR #}
+    <div class="sidebar-custom w-64 bg-gray-900 text-white px-5 shadow-lg flex-shrink-0 fixed h-screen top-0 left-0 overflow-y-auto z-50">
+    
+    {# REVISI FINAL DENGAN PENETRALAN PADDING INDUK YANG LEBIH AKURAT #}
+    <a href="{{ url_for('home') }}" class="text-xl font-bold uppercase pb-3 mb-4 border-b border-gray-700 text-emerald-400 flex items-center 
+        sticky top-0 z-20 bg-gray-900 -mx-5 px-5 -mt-5 pt-5 hover:text-emerald-300 transition duration-150"> 
+        <img src="{{ url_for('static', filename='favicon.png') }}" alt="Livechat Icon" class="w-12 h-12 mr-3">
+        Kesalahan Livechat
+    </a>
+    
+    <div class="sheet-nav space-y-1 py-5">
+            <a href="{{ url_for('show_summary') }}"
+                class="block p-3 text-sm text-gray-300 rounded-lg transition duration-200 hover:bg-indigo-700 hover:text-white
+                {% if current_sheet == 'Ringkasan Total' %}bg-emerald-600 text-white font-semibold border-l-4 border-emerald-400 pl-[14px] hover:bg-emerald-700{% endif %}">
+                <svg class="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                RINGKASAN TOTAL
+            </a>
+
+            {% for name in sheet_names %}
+                <a href="{{ url_for('show_data', sheet_name=name) }}"
+                    class="block p-3 text-sm text-gray-300 rounded-lg transition duration-200 hover:bg-indigo-700 hover:text-white
+                    {% if name == current_sheet and current_sheet != 'Ringkasan Total' %}bg-emerald-600 text-white font-semibold border-l-4 border-emerald-400 pl-[14px] hover:bg-emerald-700{% endif %}">
+                    <svg class="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    {{ name }}
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# MAIN CONTENT - KONTEN UTAMA AKAN BERADA DI BLOCK INI #}
+    <div class="{% if sheet_names %}ml-64{% else %}ml-0{% endif %} p-8 flex-grow overflow-y-auto w-full"> 
+        {% block content %}
+            {# Konten spesifik (seperti halaman summary atau detail) akan masuk di sini #}
+        {% endblock %}
+    </div>
+    
+</body>
+</html>
