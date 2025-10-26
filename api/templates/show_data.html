@@ -8,7 +8,7 @@
     <h1 class="text-3xl font-extrabold text-gray-900 mb-6">Data Kesalahan Livechat: <span class="text-emerald-600">{{ current_sheet if current_sheet else 'Pilih Sheet' }}</span></h1>
 
     {% if current_sheet == 'Ringkasan Total' %}
-    {# Bagian Ringkasan Total (Tidak Berubah) #}
+    {# Bagian Ringkasan Total #}
     <div class="flex flex-wrap gap-5 mb-10 items-start">
 
         {# RINGKASAN SITUS #}
@@ -229,8 +229,6 @@
                                         {# HANYA STICKY DI LAYAR BESAR #}
                                         lg:lg-sticky-col-cell 
                                         font-semibold text-gray-900
-                                        {# TAMBAH KELAS BACKGROUND UNTUK KONSISTENSI DI LAYAR KECIL DAN BESAR #}
-                                        {% if loop.cycle('odd', 'even') == 'odd' %}lg:bg-white{% else %}lg:bg-gray-50{% endif %}
                                     {% endif %}
                                     {% if loop.index == 2 %}text-center font-bold text-red-600{% endif %}" >
                                     {{ cell }}
