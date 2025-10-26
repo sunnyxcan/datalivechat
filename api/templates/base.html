@@ -75,12 +75,16 @@
         /* HAPUS BLOCK @media SEBELUMNYA KARENA BERPOTENSI MENIMPA POSITION: STICKY */
 
     </style>
+    
+    {# --- LAYER OVERLAY UNTUK MOBILE --- #}
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black opacity-0 z-40 transition-opacity duration-300 pointer-events-none lg:hidden"></div>
+    {# -------------------------------- #}
 </head>
 <body class="font-sans antialiased text-gray-800 flex bg-gray-50 min-h-screen">
     
     {% if sheet_names %}
     {# --- TOMBOL TOGGLE UNTUK LAYAR KECIL --- #}
-    <button id="sidebarToggle" class="fixed top-3 left-3 z-[60] p-2 bg-emerald-600 text-white rounded-lg shadow-xl lg:hidden hover:bg-emerald-700 transition duration-150">
+    <button id="sidebarToggle" class="fixed top-3 right-3 z-[60] p-2 bg-emerald-600 text-white rounded-lg shadow-xl lg:hidden hover:bg-emerald-700 transition duration-150">
         <svg id="menuIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
         <svg id="closeIcon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
     </button>
@@ -137,14 +141,45 @@
             const sidebar = document.getElementById('sidebar');
             const menuIcon = document.getElementById('menuIcon');
             const closeIcon = document.getElementById('closeIcon');
+            // Ambil elemen overlay yang baru
+            const overlay = document.getElementById('sidebar-overlay'); 
 
             function toggleSidebar() {
-                sidebar.classList.toggle('-translate-x-full');
+                const isHidden = sidebar.classList.toggle('-translate-x-full');
                 menuIcon.classList.toggle('hidden');
                 closeIcon.classList.toggle('hidden');
+                
+                // Tambahkan/hapus kelas overlay
+                if (isHidden) {
+                    overlay.classList.add('opacity-0', 'pointer-events-none');
+                    overlay.classList.remove('opacity-50', 'pointer-events-auto');
+                } else {
+                    overlay.classList.remove('opacity-0', 'pointer-events-none');
+                    overlay.classList.add('opacity-50', 'pointer-events-auto');
+                }
             }
 
-            toggleButton.addEventListener('click', toggleSidebar);
+            // Event listener untuk tombol toggle
+            toggleButton.addEventListener('click', (e) => {
+                e.stopPropagation(); // Mencegah event menyebar ke body/overlay
+                toggleSidebar();
+            });
+
+            // Event listener untuk menutup sidebar saat klik di luar
+            document.addEventListener('click', (e) => {
+                // Cek apakah sidebar terbuka dan klik BUKAN berasal dari dalam sidebar atau tombol toggle
+                const isSidebarOpen = !sidebar.classList.contains('-translate-x-full');
+                const clickedOnSidebar = sidebar.contains(e.target);
+                const clickedOnToggle = toggleButton.contains(e.target);
+
+                // Jika sidebar terbuka dan klik bukan di sidebar atau tombol toggle, maka tutup sidebar
+                if (isSidebarOpen && !clickedOnSidebar && !clickedOnToggle) {
+                    toggleSidebar();
+                }
+            });
+
+            // Opsi: Tambahkan event listener khusus pada overlay (cara yang lebih eksplisit)
+            overlay.addEventListener('click', toggleSidebar);
         }
     </script>
     
