@@ -7,9 +7,9 @@
 
         {# JUDUL DAN TOTAL KESALAHAN SITUS #}
         <div class="flex justify-between items-center px-6 pt-4 mb-4">
-            <h2 class="text-2xl font-semibold text-gray-800">Total Kesalahan per Situs</h2>
+            <h2 class="text-2xl font-semibold text-gray-800 summary-title">Total Kesalahan per Situs</h2>
             {% if grand_total %}
-            <div class="text-lg font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full shadow-md">
+            <div class="text-lg font-bold text-red-600 bg-red-100 p-1 rounded-full shadow-md grand-total-label">
                 GRAND TOTAL: {{ grand_total | format_number }}
             </div>
             {% endif %}
@@ -56,9 +56,9 @@
 
         {# JUDUL DAN TOTAL KESALAHAN STAFF #}
         <div class="flex justify-between items-center px-6 pt-4 mb-4">
-            <h2 class="text-2xl font-semibold text-gray-800">Total Kesalahan per Staff</h2>
+            <h2 class="text-2xl font-semibold text-gray-800 summary-title">Total Kesalahan per Staff</h2>
             {% if staff_grand_total %}
-            <div class="text-lg font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full shadow-md">
+            <div class="text-lg font-bold text-red-600 bg-red-100 p-1 rounded-full shadow-md grand-total-label">
                 GRAND TOTAL: {{ staff_grand_total | format_number }}
             </div>
             {% endif %}
@@ -101,9 +101,9 @@
 
         {# JUDUL DAN TOTAL KESALAHAN LEADER #}
         <div class="flex justify-between items-center px-6 pt-4 mb-4">
-            <h2 class="text-2xl font-semibold text-gray-800">Total Kesalahan per Leader</h2>
+            <h2 class="text-2xl font-semibold text-gray-800 summary-title">Total Kesalahan per Leader</h2>
             {% if leader_grand_total %}
-            <div class="text-lg font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full shadow-md">
+            <div class="text-lg font-bold text-red-600 bg-red-100 p-1 rounded-full shadow-md grand-total-label">
                 GRAND TOTAL: {{ leader_grand_total | format_number }}
             </div>
             {% endif %}

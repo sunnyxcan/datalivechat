@@ -68,6 +68,19 @@
         
         /* == PERUBAHAN BARU: RESPONSIVE TABLE (CARD LAYOUT) == */
         @media (max-width: 1023px) {
+
+            /* Diperbaiki: Menambahkan !important agar menimpa text-2xl bawaan Tailwind */
+            .summary-title {
+                font-size: 1.125rem !important; /* text-lg */
+                line-height: 1.25rem !important; /* line-height lebih ringkas */
+            }
+
+            /* Diperbaiki: Menambahkan !important agar menimpa text-lg/px-3/py-1 bawaan Tailwind */
+            .grand-total-label {
+                font-size: 0.75rem !important;     /* text-xs */
+                line-height: 1rem !important;      
+                padding: 0.25rem 0.5rem !important; 
+            }
             
             /* Terapkan tampilan card/list untuk semua tabel ringkasan */
             .table-summary-situs-card table,
