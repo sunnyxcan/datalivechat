@@ -6,11 +6,8 @@
     <title>{% block title %}Kesalahan Livechat{% endblock %}</title>
     <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}">
 
-    {# --- TAUTAN KE CDN TAILWIND CSS --- #}
     <script src="https://cdn.tailwindcss.com"></script>
-    {# --------------------------------- #}
 
-    {# --- VERCEL WEB ANALYTICS & GOOGLE ANALYTICS (TETAP) --- #}
     <script src="/_vercel/insights/script.js" defer></script>
     <script src="/_vercel/speed-insights/script.js"></script>
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-9PE8B44WV0"></script>
@@ -21,7 +18,6 @@
 
         gtag('config', 'G-9PE8B44WV0');
     </script>
-    {# ----------------------------------------------------- #}
     
     <style>
         /* SCROLLBAR STYLES */
@@ -35,8 +31,7 @@
         .main-content-custom::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
         .main-content-custom::-webkit-scrollbar-thumb:hover { background: #6b7280; }
         
-        /* GAYA KUSTOM UNTUK STICKY COLUMN (PROPERTI STICKY) */
-        /* Catatan: Karena properti ini DITERAPKAN dengan awalan 'lg:' di markup, ini hanya aktif di layar lebar */
+        /* STICKY COLUMN STYLES */
         .lg-sticky-col-header { 
             position: sticky !important; 
             left: 0 !important; 
@@ -51,7 +46,7 @@
             border-right: 3px solid #9ca3af !important;
         }
         
-        /* GAYA UNTUK LINK DI DETAIL KESALAHAN */
+        /* LINK STYLES */
         .table-kesalahan a {
             color: #3b82f6;
             text-decoration: none;
@@ -62,8 +57,7 @@
             text-decoration: underline;
         }
 
-        /* GAYA UNTUK HOVER DAN BACKGROUND NORMAL (AKTIF DI SEMUA LAYAR JIKA KELAS .lg-sticky-col-cell ADA) */
-        /* Kita atur background default di sini, dan menggunakan lg:bg-white/lg:bg-gray-50 di markup */
+        /* ROW HOVER AND TOTAL STYLES */
         .staff-table-body tr:hover .lg-sticky-col-cell { 
             background-color: #c7d2fe !important; 
             color: black !important;
@@ -71,26 +65,18 @@
         .summary-total .lg-sticky-col-cell { 
             background-color: #10b981 !important;
         }
-        
-        /* HAPUS BLOCK @media SEBELUMNYA KARENA BERPOTENSI MENIMPA POSITION: STICKY */
-
     </style>
     
-    {# --- LAYER OVERLAY UNTUK MOBILE --- #}
     <div id="sidebar-overlay" class="fixed inset-0 bg-black opacity-0 z-40 transition-opacity duration-300 pointer-events-none lg:hidden"></div>
-    {# -------------------------------- #}
 </head>
 <body class="font-sans antialiased text-gray-800 flex bg-gray-50 min-h-screen">
     
     {% if sheet_names %}
-    {# --- TOMBOL TOGGLE UNTUK LAYAR KECIL --- #}
     <button id="sidebarToggle" class="fixed top-3 right-3 z-[60] p-2 bg-emerald-600 text-white rounded-lg shadow-xl lg:hidden hover:bg-emerald-700 transition duration-150">
         <svg id="menuIcon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
         <svg id="closeIcon" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
     </button>
-    {# -------------------------------------- #}
     
-    {# SIDEBAR #}
     <div id="sidebar" class="sidebar-custom w-64 bg-gray-900 text-white px-5 shadow-lg flex-shrink-0 fixed h-screen top-0 left-0 overflow-y-auto z-50 transform -translate-x-full transition-transform duration-300 lg:translate-x-0 lg:block">
     
         <a href="{{ url_for('home') }}" class="text-xl font-bold uppercase pb-3 mb-4 border-b border-gray-700 text-emerald-400 flex items-center 
@@ -121,7 +107,6 @@
     </div>
     {% endif %}
 
-    {# MAIN CONTENT #}
     <div class="p-8 flex-grow overflow-y-auto w-full 
         {% if sheet_names %}
             ml-0 lg:ml-64
@@ -134,14 +119,12 @@
     </div>
 
     <script>
-        // Fungsionalitas Sidebar Toggle untuk layar kecil
         const toggleButton = document.getElementById('sidebarToggle');
         
         if (toggleButton) {
             const sidebar = document.getElementById('sidebar');
             const menuIcon = document.getElementById('menuIcon');
             const closeIcon = document.getElementById('closeIcon');
-            // Ambil elemen overlay yang baru
             const overlay = document.getElementById('sidebar-overlay'); 
 
             function toggleSidebar() {
@@ -149,7 +132,6 @@
                 menuIcon.classList.toggle('hidden');
                 closeIcon.classList.toggle('hidden');
                 
-                // Tambahkan/hapus kelas overlay
                 if (isHidden) {
                     overlay.classList.add('opacity-0', 'pointer-events-none');
                     overlay.classList.remove('opacity-50', 'pointer-events-auto');
@@ -159,26 +141,21 @@
                 }
             }
 
-            // Event listener untuk tombol toggle
             toggleButton.addEventListener('click', (e) => {
-                e.stopPropagation(); // Mencegah event menyebar ke body/overlay
+                e.stopPropagation();
                 toggleSidebar();
             });
 
-            // Event listener untuk menutup sidebar saat klik di luar
             document.addEventListener('click', (e) => {
-                // Cek apakah sidebar terbuka dan klik BUKAN berasal dari dalam sidebar atau tombol toggle
                 const isSidebarOpen = !sidebar.classList.contains('-translate-x-full');
                 const clickedOnSidebar = sidebar.contains(e.target);
                 const clickedOnToggle = toggleButton.contains(e.target);
 
-                // Jika sidebar terbuka dan klik bukan di sidebar atau tombol toggle, maka tutup sidebar
                 if (isSidebarOpen && !clickedOnSidebar && !clickedOnToggle) {
                     toggleSidebar();
                 }
             });
 
-            // Opsi: Tambahkan event listener khusus pada overlay (cara yang lebih eksplisit)
             overlay.addEventListener('click', toggleSidebar);
         }
     </script>
