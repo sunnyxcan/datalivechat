@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Konfigurasi Database - Kesalahan Livechat{% endblock %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-xl shadow-2xl border border-gray-100">
+    <h1 class="text-3xl font-bold text-gray-900 border-b pb-4 mb-6 flex justify-between items-center">
+        🛠️ Pengaturan Konfigurasi Database
+        <a href="{{ url_for('home') }}" class="text-sm text-indigo-600 hover:text-indigo-800 transition duration-150">
+            &larr; Kembali ke Home
+        </a>
+    </h1>
+
+    {# --- TEMPAT UNTUK MENAMPILKAN FLASH MESSAGES --- #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="p-4 mb-4 text-sm rounded-lg 
+                    {% if category == 'success' %}
+                        bg-emerald-100 text-emerald-800 border border-emerald-300
+                    {% elif category == 'danger' %}
+                        bg-red-100 text-red-800 border border-red-300
+                    {% else %}
+                        bg-blue-100 text-blue-800 border border-blue-300
+                    {% endif %}
+                " role="alert">
+                    <span class="font-medium">{{ message | safe }}</span>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    {# ---------------------------------------------- #}
+
+    {# --- STRUKTUR TAB NAVIGASI --- #}
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-8" id="tab-nav">
+            <button type="button" data-tab-target="tab-global"
+                class="tab-button py-2 px-3 text-lg font-medium text-gray-900 border-b-4 border-pink-500 hover:text-pink-600 focus:outline-none transition duration-150">
+                Konfigurasi Global
+            </button>
+            <button type="button" data-tab-target="tab-site"
+                class="tab-button py-2 px-3 text-lg font-medium text-gray-500 border-b-4 border-transparent hover:border-gray-300 hover:text-gray-700 focus:outline-none transition duration-150">
+                Pemetaan Situs & Leader
+            </button>
+            <button type="button" data-tab-target="tab-special"
+                class="tab-button py-2 px-3 text-lg font-medium text-gray-500 border-b-4 border-transparent hover:border-gray-300 hover:text-gray-700 focus:outline-none transition duration-150">
+                Sheet Khusus
+            </button>
+        </nav>
+    </div>
+    {# ----------------------------- #}
+
+    <form method="POST" action="{{ url_for('show_db_config') }}" id="config-form">
+        
+        {# -------------------------------------------------------------------------- #}
+        {# --- 1. TAB CONTENT: GLOBAL CONFIGURATION (GlobalConfig) --- #}
+        {# -------------------------------------------------------------------------- #}
+        <div id="tab-global" class="tab-content mb-8 border border-gray-200 p-6 rounded-lg bg-gray-50">
+            <h2 class="text-xl font-semibold text-pink-700 mb-4 pb-2 border-b border-pink-200">Pengaturan Utama Aplikasi</h2>
+            <div class="space-y-4">
+                
+                {# SPREADSHEET_ID #}
+                <div>
+                    <label for="spreadsheet_id" class="block text-sm font-medium text-gray-700">ID Spreadsheet Utama:</label>
+                    <input type="text" id="spreadsheet_id" name="spreadsheet_id" 
+                        value="{{ global_config.get('SPREADSHEET_ID', '') }}"
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500" 
+                        placeholder="Contoh: 1ABc...XyZ">
+                    <p class="mt-1 text-xs text-gray-500">ID unik Google Sheet yang akan diakses. Mengubah ini akan **memerlukan inisialisasi ulang** Sheets API.</p>
+                </div>
+
+                {# RANGE_KESALAHAN_DEFAULT #}
+                <div>
+                    <label for="range_kesalahan" class="block text-sm font-medium text-gray-700">Range Default Kesalahan (Range A):</label>
+                    <input type="text" id="range_kesalahan" name="range_kesalahan" 
+                        value="{{ global_config.get('RANGE_KESALAHAN_DEFAULT', '') }}"
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500" 
+                        placeholder="Contoh: A1:C">
+                    <p class="mt-1 text-xs text-gray-500">Range default untuk data kesalahan (misalnya, `A1:C`).</p>
+                </div>
+                
+                {# RANGE_STAFF_DEFAULT #}
+                <div>
+                    <label for="range_staff" class="block text-sm font-medium text-gray-700">Range Default Staff (Range B):</label>
+                    <input type="text" id="range_staff" name="range_staff" 
+                        value="{{ global_config.get('RANGE_STAFF_DEFAULT', '') }}"
+                        class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500" 
+                        placeholder="Contoh: A20:B">
+                    <p class="mt-1 text-xs text-gray-500">Range default untuk data staff dan total (misalnya, `A20:B`).</p>
+                </div>
+
+                {# SCOPES #}
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">SCOPES API:</label>
+                    <textarea readonly class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 text-gray-500 text-sm h-16">{{ global_config.get('SCOPES', '') }}</textarea>
+                    <p class="mt-1 text-xs text-gray-500">Scopes API. Ini adalah pengaturan read-only.</p>
+                </div>
+            </div>
+        </div>
+
+        {# -------------------------------------------------------------------------- #}
+        {# --- 2. TAB CONTENT: SITE CONFIGURATION (SiteConfig / Leader Mapping) --- #}
+        {# -------------------------------------------------------------------------- #}
+        <div id="tab-site" class="tab-content mb-8 border border-gray-200 p-6 rounded-lg hidden">
+            <h2 class="text-xl font-semibold text-pink-700 mb-4 pb-2 border-b border-pink-200">Pemetaan Situs ke Leader</h2>
+            <p class="text-sm text-gray-600 mb-4">Tambahkan, ubah, atau hapus pemetaan antara nama sheet (situs) dan nama Leader. Nama situs harus sama persis dengan nama sheet di Google Sheets.</p>
+            
+            <div id="site-config-list" class="space-y-3">
+                {% for site in site_configs %}
+                <div class="flex space-x-3 items-center bg-white p-3 border rounded-md">
+                    <div class="flex-grow">
+                        <label class="block text-xs font-semibold text-gray-500">Nama Situs (SHEET NAME):</label>
+                        <input type="text" name="site_name_{{ site.id }}" value="{{ site.site_name }}" required
+                            class="block w-full text-sm border-gray-300 rounded-md shadow-sm p-1">
+                    </div>
+                    <div class="flex-grow">
+                        <label class="block text-xs font-semibold text-gray-500">Nama Leader:</label>
+                        <input type="text" name="leader_name_{{ site.id }}" value="{{ site.leader_name }}" required
+                            class="block w-full text-sm border-gray-300 rounded-md shadow-sm p-1">
+                    </div>
+                    {# Tombol Hapus: Menggunakan `formaction` dan `formnovalidate` agar hanya aksi ini yang dieksekusi #}
+                    <button type="submit" name="action" value="delete_site_{{ site.id }}" 
+                            formaction="{{ url_for('show_db_config') }}" formnovalidate
+                            class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md text-sm transition duration-150">Hapus</button>
+                </div>
+                {% endfor %}
+
+                <button type="button" id="add-site-config" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md text-sm transition duration-150">
+                    <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Tambah Situs Baru
+                </button>
+            </div>
+        </div>
+
+        {# -------------------------------------------------------------------------- #}
+        {# --- 3. TAB CONTENT: SPECIAL SHEETS (SpecialSheet) --- #}
+        {# -------------------------------------------------------------------------- #}
+        <div id="tab-special" class="tab-content mb-8 border border-gray-200 p-6 rounded-lg bg-gray-50 hidden">
+            <h2 class="text-xl font-semibold text-pink-700 mb-4 pb-2 border-b border-pink-200">Sheet Khusus</h2>
+            <p class="text-sm text-gray-600 mb-4">Sheet yang memiliki format data kesalahan yang unik dan hanya menggunakan Range Kesalahan (tidak ada Range Staff).</p>
+            
+            <div id="special-sheet-list" class="space-y-3">
+                {% for sheet in special_sheets %}
+                <div class="flex space-x-3 items-center bg-white p-3 border rounded-md">
+                    <div class="flex-grow">
+                        <label class="block text-xs font-semibold text-gray-500">Nama Sheet Khusus:</label>
+                        <input type="text" name="special_sheet_name_{{ sheet.id }}" value="{{ sheet.sheet_name }}" required
+                            class="block w-full text-sm border-gray-300 rounded-md shadow-sm p-1">
+                    </div>
+                    <div class="flex-grow">
+                        <label class="block text-xs font-semibold text-gray-500">Range Kesalahan Khusus:</label>
+                        <input type="text" name="special_sheet_range_{{ sheet.id }}" value="{{ sheet.range_kesalahan }}" required
+                            class="block w-full text-sm border-gray-300 rounded-md shadow-sm p-1" placeholder="Contoh: A1:C">
+                    </div>
+                    {# Tombol Hapus: Menggunakan `formaction` dan `formnovalidate` agar hanya aksi ini yang dieksekusi #}
+                    <button type="submit" name="action" value="delete_special_{{ sheet.id }}" 
+                            formaction="{{ url_for('show_db_config') }}" formnovalidate
+                            class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-md text-sm transition duration-150">Hapus</button>
+                </div>
+                {% endfor %}
+                
+                <button type="button" id="add-special-sheet" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-md text-sm transition duration-150">
+                    <svg class="w-4 h-4 inline-block mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Tambah Sheet Khusus Baru
+                </button>
+            </div>
+        </div>
+
+        {# --- Tombol Submit Utama --- #}
+        <div class="mt-8 pt-4 border-t border-gray-200 flex justify-end">
+            {# Tombol ini menyimpan semua perubahan, termasuk Global Config, Site Config, dan Special Sheet #}
+            <button type="submit" name="action" value="save_all" 
+                formnovalidate  {# <--- TAMBAHKAN INI #}
+                class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition duration-200">
+                Simpan Konfigurasi
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Fungsi untuk mengaktifkan tab
+        const activateTab = (targetId) => {
+            // Non-aktifkan semua tombol dan konten
+            tabButtons.forEach(btn => {
+                btn.classList.remove('border-pink-500', 'text-gray-900', 'hover:border-gray-300', 'hover:text-gray-700');
+                btn.classList.add('border-transparent', 'text-gray-500', 'hover:border-gray-300', 'hover:text-gray-700');
+            });
+            tabContents.forEach(content => {
+                content.classList.add('hidden');
+            });
+
+            // Aktifkan tombol yang dipilih
+            const selectedButton = document.querySelector(`[data-tab-target="${targetId}"]`);
+            if (selectedButton) {
+                selectedButton.classList.remove('border-transparent', 'text-gray-500', 'hover:border-gray-300', 'hover:text-gray-700');
+                selectedButton.classList.add('border-pink-500', 'text-gray-900');
+            }
+
+            // Tampilkan konten yang dipilih
+            const selectedContent = document.getElementById(targetId);
+            if (selectedContent) {
+                selectedContent.classList.remove('hidden');
+            }
+        };
+
+        // Event listener untuk tombol tab
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetId = button.getAttribute('data-tab-target');
+                activateTab(targetId);
+            });
+        });
+
+        // Default: Aktifkan tab pertama saat halaman dimuat
+        activateTab('tab-global');
+
+        // Logika untuk SiteConfig (Tambah Baru)
+        document.getElementById('add-site-config').addEventListener('click', function() {
+            const container = document.getElementById('site-config-list');
+            const newId = 'new_' + Date.now(); 
+            const html = `
+                <div class="flex space-x-3 items-center bg-yellow-100 p-3 border border-yellow-300 rounded-md new-row-to-add">
+                    <div class="flex-grow">
+                        <label class="block text-xs font-semibold text-gray-500">Nama Situs (SHEET NAME):</label>
+                        <input type="text" name="new_site_name_${newId}" placeholder="Nama Sheet" required
+                            class="block w-full text-sm border-gray-300 rounded-md shadow-sm p-1">
+                    </div>
+                    <div class="flex-grow">
+                        <label class="block text-xs font-semibold text-gray-500">Nama Leader:</label>
+                        <input type="text" name="new_leader_name_${newId}" placeholder="Nama Leader" required
+                            class="block w-full text-sm border-gray-300 rounded-md shadow-sm p-1">
+                    </div>
+                    <button type="button" onclick="this.parentNode.remove()" class="bg-gray-400 hover:bg-gray-500 text-white p-2 rounded-md text-sm transition duration-150">Hapus</button>
+                </div>
+            `;
+            // Sisipkan HTML tepat sebelum tombol 'Tambah Situs Baru'
+            this.parentNode.insertBefore(new DOMParser().parseFromString(html, 'text/html').body.firstChild, this);
+        });
+
+        // Logika untuk SpecialSheet (Tambah Baru)
+        document.getElementById('add-special-sheet').addEventListener('click', function() {
+            const container = document.getElementById('special-sheet-list');
+            const newId = 'new_' + Date.now(); 
+            const html = `
+                <div class="flex space-x-3 items-center bg-yellow-100 p-3 border border-yellow-300 rounded-md new-row-to-add">
+                    <div class="flex-grow">
+                        <label class="block text-xs font-semibold text-gray-500">Nama Sheet Khusus:</label>
+                        <input type="text" name="new_special_sheet_name_${newId}" placeholder="Nama Sheet" required
+                            class="block w-full text-sm border-gray-300 rounded-md shadow-sm p-1">
+                    </div>
+                    <div class="flex-grow">
+                        <label class="block text-xs font-semibold text-gray-500">Range Kesalahan Khusus:</label>
+                        <input type="text" name="new_special_sheet_range_${newId}" placeholder="Contoh: A1:C" required
+                            class="block w-full text-sm border-gray-300 rounded-md shadow-sm p-1">
+                    </div>
+                    <button type="button" onclick="this.parentNode.remove()" class="bg-gray-400 hover:bg-gray-500 text-white p-2 rounded-md text-sm transition duration-150">Hapus</button>
+                </div>
+            `;
+            // Sisipkan HTML tepat sebelum tombol 'Tambah Sheet Khusus Baru'
+            this.parentNode.insertBefore(new DOMParser().parseFromString(html, 'text/html').body.firstChild, this);
+        });
+    });
+</script>
+{% endblock %}

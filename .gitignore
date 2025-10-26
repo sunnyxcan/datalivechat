@@ -9,3 +9,5 @@ venv/
 # Data dan Kredensial Sensitif
 client_secret.json
 token.json
+client_secret1.json
+.env

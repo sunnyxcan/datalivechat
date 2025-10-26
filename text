@@ -1,0 +1,15 @@
+Project ID
+6d55f9bb-80a7-425c-93d6-ef0596e8e0d1
+
+Publishable Client Key
+pck_3mrmna8sxndv0ah18zztmfv6rs5bb2npyqyfe0j7sdrw8
+
+Secret Server Key
+ssk_xdzm5jrjkvm3zp2njcdfcf467m6qhn8ec90w202yk6wq8
+
+
+Stack Auth Project ID
+6d55f9bb-80a7-425c-93d6-ef0596e8e0d1
+
+JWKS URL
+https://api.stack-auth.com/api/v1/projects/6d55f9bb-80a7-425c-93d6-ef0596e8e0d1/.well-known/jwks.json
