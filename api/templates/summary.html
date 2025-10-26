@@ -3,7 +3,7 @@
 <div class="flex flex-wrap gap-5 mb-10 items-start">
 
     {# RINGKASAN SITUS #}
-    <div class="table-summary w-full lg:flex-1 lg:basis-[calc(40%-10px)] bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
+    <div class="table-summary table-summary-situs-card w-full lg:flex-1 lg:basis-[calc(40%-10px)] bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
 
         {# JUDUL DAN TOTAL KESALAHAN SITUS #}
         <div class="flex justify-between items-center px-6 pt-4 mb-4">
@@ -27,13 +27,15 @@
                 <tbody>
                     {% for item in summary_data %}
                     <tr class="bg-white border-b hover:bg-indigo-200 transition duration-150">
-                        <td class="px-6 py-3 text-center font-medium">{{ loop.index }}</td>
-                        <td class="px-6 py-3">
+                        <td class="px-6 py-3 text-center font-medium" data-label="No.">
+                            {{ loop.index }}
+                        </td>
+                        <td class="px-6 py-3" data-label="Nama Situs">
                             <a href="{{ item.url }}" class="text-gray-800 font-medium hover:text-emerald-600 hover:underline">
                                 {{ item.name }}
                             </a>
                         </td>
-                        <td class="px-6 py-3 text-right font-bold text-lg text-red-600">{{ item.total | format_number }}</td>
+                        <td class="px-6 py-3 text-right font-bold text-lg text-red-600" data-label="Total Kesalahan">{{ item.total | format_number }}</td>
                     </tr>
                     {% endfor %}
 
@@ -50,7 +52,7 @@
     </div>
 
     {# RINGKASAN STAFF #}
-    <div class="table-summary-leader w-full lg:flex-1 lg:basis-[calc(60%-10px)] bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
+    <div class="table-summary-staff-card w-full lg:flex-1 lg:basis-[calc(60%-10px)] bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
 
         {# JUDUL DAN TOTAL KESALAHAN STAFF #}
         <div class="flex justify-between items-center px-6 pt-4 mb-4">
@@ -62,9 +64,9 @@
             {% endif %}
         </div>
 
-        <div class="overflow-x-auto max-h-[calc(100vh-200px)]">
+        <div class="overflow-y-auto max-h-[calc(100vh-200px)]">
             <table class="data-table w-full text-sm text-left border-collapse">
-                <thead class="text-xs text-white uppercase bg-gray-900 sticky top-0 z-10">
+                <thead class="text-xs text-white uppercase bg-gray-900 sticky top-0 z-10 table-staff-leader-header">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-center w-[5%]">NO</th>
                         <th scope="col" class="px-6 py-3 w-[35%]">NAMA</th>
@@ -76,10 +78,10 @@
                     {% if summary_staff_data %}
                         {% for item in summary_staff_data %}
                         <tr class="staff-row border-b hover:bg-indigo-200 transition duration-150 {% if loop.index > 1 %}border-t-2 border-gray-400{% endif %}">
-                            <td class="px-6 py-3 text-center font-medium">{{ item.no }}</td>
-                            <td class="px-6 py-3"><strong class="text-gray-900">{{ item.name }}</strong></td>
-                            <td class="px-6 py-3 text-xs text-gray-600">{{ item.situs_details }}</td>
-                            <td class="px-6 py-3 text-right font-bold text-lg text-red-600">{{ item.grand_total_staff | format_number }}</td>
+                            <td class="px-6 py-3 text-center font-medium" data-label="NO">{{ item.no }}</td>
+                            <td class="px-6 py-3" data-label="NAMA"><strong class="text-gray-900">{{ item.name }}</strong></td>
+                            <td class="px-6 py-3 text-xs text-gray-600" data-label="SITUS (Total Per Situs)">{{ item.situs_details }}</td>
+                            <td class="px-6 py-3 text-right font-bold text-lg text-red-600" data-label="TOTAL KESELURUHAN">{{ item.grand_total_staff | format_number }}</td>
                         </tr>
                         {% endfor %}
                     {% else %}
@@ -95,7 +97,7 @@
     </div>
 
     {# RINGKASAN LEADER #}
-    <div class="table-summary-staff w-full bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
+    <div class="table-summary-leader-card w-full bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
 
         {# JUDUL DAN TOTAL KESALAHAN LEADER #}
         <div class="flex justify-between items-center px-6 pt-4 mb-4">
@@ -107,9 +109,9 @@
             {% endif %}
         </div>
 
-        <div class="overflow-x-auto max-h-[calc(100vh-200px)]">
+        <div class="overflow-y-auto max-h-[calc(100vh-200px)]">
             <table class="data-table w-full text-sm text-left border-collapse">
-                <thead class="text-xs text-white uppercase bg-gray-900 sticky top-0 z-10">
+                <thead class="text-xs text-white uppercase bg-gray-900 sticky top-0 z-10 table-staff-leader-header">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-center w-[5%]">NO</th>
                         <th scope="col" class="px-6 py-3 w-[25%]">NAMA LEADER</th>
@@ -121,10 +123,10 @@
                     {% if summary_leader_data %}
                         {% for item in summary_leader_data %}
                         <tr class="leader-row border-b hover:bg-indigo-200 transition duration-150 {% if loop.index > 1 %}border-t-2 border-gray-400{% endif %}">
-                            <td class="px-6 py-3 text-center font-medium">{{ item.no }}</td>
-                            <td class="px-6 py-3"><strong class="text-gray-900">{{ item.name }}</strong></td>
-                            <td class="px-6 py-3 text-xs text-gray-600">{{ item.situs_details | safe }}</td>
-                            <td class="px-6 py-3 text-right font-bold text-lg text-red-600">{{ item.total | format_number }}</td>
+                            <td class="px-6 py-3 text-center font-medium" data-label="NO">{{ item.no }}</td>
+                            <td class="px-6 py-3" data-label="NAMA LEADER"><strong class="text-gray-900">{{ item.name }}</strong></td>
+                            <td class="px-6 py-3 text-xs text-gray-600" data-label="SITUS (Total Per Situs)">{{ item.situs_details | safe }}</td>
+                            <td class="px-6 py-3 text-right font-bold text-lg text-red-600" data-label="TOTAL">{{ item.total | format_number }}</td>
                         </tr>
                         {% endfor %}
                     {% else %}

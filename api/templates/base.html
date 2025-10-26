@@ -65,6 +65,74 @@
         .summary-total .lg-sticky-col-cell { 
             background-color: #10b981 !important;
         }
+        
+        /* == PERUBAHAN BARU: RESPONSIVE TABLE (CARD LAYOUT) == */
+        @media (max-width: 1023px) {
+            
+            /* Terapkan tampilan card/list untuk semua tabel ringkasan */
+            .table-summary-situs-card table,
+            .table-summary-staff-card table,
+            .table-summary-leader-card table {
+                width: 100% !important;
+            }
+
+            /* HANYA SEMBUNYIKAN HEADER PADA LAYAR KECIL */
+            .table-summary-situs-card thead, .table-summary-situs-card th,
+            .table-summary-staff-card .table-staff-leader-header, 
+            .table-summary-staff-card th,
+            .table-summary-leader-card .table-staff-leader-header, 
+            .table-summary-leader-card th {
+                display: none; 
+            }
+
+            .table-summary-situs-card tr,
+            .table-summary-staff-card tr,
+            .table-summary-leader-card tr {
+                display: block; 
+                margin-bottom: 1rem;
+                border: 1px solid #e5e7eb;
+                border-radius: 0.5rem;
+                background-color: #ffffff;
+                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            }
+
+            .table-summary-situs-card td,
+            .table-summary-staff-card td,
+            .table-summary-leader-card td {
+                display: block; 
+                text-align: right;
+                padding: 0.75rem 1rem;
+                position: relative;
+                border: none;
+            }
+            
+            /* Tampilkan label kolom di depan nilai sel */
+            .table-summary-situs-card td:before,
+            .table-summary-staff-card td:before,
+            .table-summary-leader-card td:before {
+                content: attr(data-label);
+                float: left;
+                font-weight: 600;
+                color: #4b5563; 
+            }
+
+            /* Kustomisasi tampilan TOTAL */
+            .table-summary-situs-card tr td:nth-last-child(1),
+            .table-summary-staff-card tr td:nth-last-child(1),
+            .table-summary-leader-card tr td:nth-last-child(1) {
+                background-color: #f3f4f6; 
+                border-top: 1px solid #e5e7eb;
+                font-size: 1.125rem; 
+            }
+            
+            /* Hapus border-bottom bawaan saat card layout */
+            .table-summary-situs-card tr,
+            .table-summary-staff-card tr,
+            .table-summary-leader-card tr {
+                border-bottom: none !important;
+            }
+        }
+        /* == AKHIR PERUBAHAN BARU == */
     </style>
     
     <div id="sidebar-overlay" class="fixed inset-0 bg-black opacity-0 z-40 transition-opacity duration-300 pointer-events-none lg:hidden"></div>
