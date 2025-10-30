@@ -10,23 +10,19 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from .config import (
-    SPREADSHEET_ID, CLIENT_SECRET_FILE, TOKEN_FILE, 
+    SPREADSHEET_LIVECHAT, CLIENT_SECRET_FILE, TOKEN_FILE, 
     SHEETS_TO_HIDE, SCOPES as DEFAULT_SCOPES 
 )
 from .database import get_global_config, get_special_sheets
-
-# --- FUNGSI UTILITY UNTUK MEMUAT KONFIGURASI DINAMIS ---
 
 def _load_dynamic_config():
     global_config = get_global_config()
     special_sheets = get_special_sheets()
     
     scopes = global_config.get('SCOPES', DEFAULT_SCOPES)
-    spreadsheet_id = global_config.get('SPREADSHEET_ID', SPREADSHEET_ID)
+    spreadsheet_id = global_config.get('SPREADSHEET_LIVECHAT', SPREADSHEET_LIVECHAT) 
 
     return scopes, special_sheets, spreadsheet_id
-
-# --- FUNGSI GOOGLE SHEETS API ---
 
 def init_sheets_service(spreadsheet_id=None, scopes=None):
     
@@ -36,7 +32,6 @@ def init_sheets_service(spreadsheet_id=None, scopes=None):
     
     creds = None
     
-    # 1. Cek Environment Variables
     token_json_str = os.environ.get('TOKEN_JSON')
     client_secret_json_str = os.environ.get('CLIENT_SECRET_JSON')
 
@@ -51,7 +46,6 @@ def init_sheets_service(spreadsheet_id=None, scopes=None):
         except Exception:
             creds = None
 
-    # 2. Cek File Lokal
     current_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.join(current_dir, '..') if os.path.basename(current_dir) == 'api' else current_dir
     
@@ -95,7 +89,7 @@ def get_sheet_names(service, sheet_khusus=None, spreadsheet_id=None):
     _, dynamic_sheet_khusus, dynamic_spreadsheet_id = _load_dynamic_config()
     
     current_sheet_khusus = sheet_khusus if sheet_khusus is not None else dynamic_sheet_khusus
-    current_spreadsheet_id = spreadsheet_id if spreadsheet_id else dynamic_spreadsheet_id
+    current_spreadsheet_id = spreadsheet_id if spreadsheet_id else dynamic_spreadsheet_id 
     
     
     hide_set_stripped = {name.strip() for name in SHEETS_TO_HIDE}
@@ -131,7 +125,7 @@ def get_sheet_names(service, sheet_khusus=None, spreadsheet_id=None):
 def get_sheet_data(service, sheet_name, range_name, expected_columns=None, spreadsheet_id=None):
     
     _, _, dynamic_spreadsheet_id = _load_dynamic_config()
-    current_spreadsheet_id = spreadsheet_id if spreadsheet_id else dynamic_spreadsheet_id
+    current_spreadsheet_id = spreadsheet_id if spreadsheet_id else dynamic_spreadsheet_id 
     
     full_range_name = f"'{sheet_name}'!{range_name}"
 

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid max-w-full">
+    
+    {# JUDUL HALAMAN #}
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-800 flex items-center">
+            <svg class="w-6 h-6 mr-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            Data Kesalahan Fatal ({{ current_sheet }})
+        </h1>
+    </div>
+
+    {# NAVIGASI SHEET FILTER (Menggunakan Tailwind CSS) #}
+    <div class="flex flex-wrap gap-2 mb-6">
+        {% for sheet in sheet_names %}
+        <a href="{% if 'STAFF' in sheet or 'LAMA' in sheet %}
+                    {{ url_for('kesalahan.show_staff_kesalahan', sheet_name=sheet) }}
+                {% else %}
+                    {{ url_for('kesalahan.show_fatal_kesalahan', sheet_name=sheet) }}
+                {% endif %}" 
+           class="px-4 py-2 text-sm font-medium rounded-lg transition duration-150 ease-in-out
+                {% if sheet == current_sheet %}
+                    bg-red-600 text-white hover:bg-red-700
+                {% else %}
+                    border border-red-500 text-red-600 hover:bg-red-50
+                {% endif %}">
+            {{ sheet }}
+        </a>
+        {% endfor %}
+    </div>
+
+    {# BAGIAN UTAMA #}
+    <div class="w-full">
+        <h2 class="text-xl font-semibold mb-3 mt-4 text-gray-800">Tabel Kesalahan Fatal</h2>
+
+        {% if fatal_rows %}
+        <div class="bg-white shadow-lg rounded-lg mb-4 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h6 class="text-lg font-bold text-red-600">
+                    Data Detail Fatal ({{ fatal_rows|length }} Baris)
+                </h6>
+            </div>
+            <div class="p-4 table-kesalahan">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200" id="dataFatal" cellspacing="0">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                {% for header in fatal_headers %}
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                                    {{ header if header else '-' }}
+                                </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for row in fatal_rows %}
+                            <tr class="hover:bg-red-50">
+                                {% for cell in row %}
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 max-w-xs overflow-hidden text-ellipsis">
+                                    {% if cell is string and ('http' in cell or 'https' in cell) %}
+                                        <a href="{{ cell }}" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline">
+                                            {# Tampilkan hanya 30 karakter pertama untuk link #}
+                                            {{ cell[:30] }}{% if cell|length > 30 %}...{% endif %}
+                                        </a>
+                                    {% else %}
+                                        {{ cell }}
+                                    {% endif %}
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        {# ALERT ERROR/DATA KOSONG (Menggunakan Tailwind CSS) #}
+        <div class="p-4 mb-4 text-sm text-yellow-800 rounded-lg bg-yellow-50 border border-yellow-300" role="alert">
+            <p class="font-medium">Data kesalahan fatal tidak ditemukan atau kosong di sheet <strong>"{{ current_sheet }}"</strong>.</p>
+            <p class="mt-2">Mohon pastikan nama sheet (saat ini: <strong>{{ current_sheet }}</strong>) benar-benar ada di Google Spreadsheet Anda, dan rentang data (A1:M) sudah benar.</p>
+            <p class="mt-2 font-bold">
+                Penting: Jika nama sheet di URL hanya "FATAL" padahal seharusnya "FATAL!!!", pastikan link di *sidebar* mengarah ke **`/kesalahan`** (yang akan dialihkan ke **`/kesalahan/FATAL!!!`** oleh *route* `fatal_home`).
+            </p>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+{# SKRIP DATATABLES DIPINDAHKAN KE FOOTER GLOBAL DI BASE.HTML ATAU HILANGKAN JIKA SUDAH ADA DI BASE.HTML #}
+{# Blok scripts dihilangkan karena asumsikan library DataTables sudah di-load di base.html #}
+{% endblock %}

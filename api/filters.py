@@ -59,6 +59,22 @@ def render_cell(cell_content):
     return final_output
 
 def format_number(value):
-    if isinstance(value, (int, float)):
-        return f"{value:,.0f}" if isinstance(value, float) else f"{value:,}"
-    return str(value)
+    """
+    Format angka dengan pemisah ribuan.
+    Jika float, tampilkan dengan 2 angka desimal.
+    Jika integer, tampilkan sebagai integer.
+    """
+    if isinstance(value, float):
+        # 💡 KOREKSI: Menggunakan .2f untuk menampilkan 2 angka desimal
+        # Contoh: 0.75 akan ditampilkan sebagai 0.75
+        # Contoh: 3.00 akan ditampilkan sebagai 3.00
+        return f"{value:,.2f}"
+    elif isinstance(value, int):
+        # Untuk integer, tetap tampilkan tanpa desimal
+        return f"{value:,}"
+    try:
+        # Coba konversi string menjadi float dan format
+        float_val = float(value)
+        return f"{float_val:,.2f}"
+    except (ValueError, TypeError):
+        return str(value)

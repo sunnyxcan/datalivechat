@@ -66,7 +66,7 @@ SHEET_KHUSUS_INITIAL = {
 GLOBAL_CONFIG_INITIAL = {
     'SPREADSHEET_ID': '1TkOeAMhwlmG1WftjAyJAlSBYzbR-JPum4sTIKliPtss', 
     'SCOPES': json.dumps(['https://www.googleapis.com/auth/spreadsheets.readonly']),
-    'RANGE_KESALAHAN_DEFAULT': 'A1:C',
+    'RANGE_LIVECHAT_DEFAULT': 'A1:C',
     'RANGE_STAFF_DEFAULT': 'H1:AH',
 }
 

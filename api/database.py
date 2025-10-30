@@ -18,12 +18,16 @@ except Exception:
 
 class SiteConfig(db.Model):
     __tablename__ = 'site_config'
-    id = db.Column(db.Integer, primary_key=True) 
-    site_name = db.Column(db.String(100), unique=True, nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    # Kolom untuk Livechat (Nama situs lama)
+    site_name_livechat = db.Column(db.String(100), unique=True, nullable=False)
+    # Kolom baru untuk Kesalahan (Ini akan menjadi kunci mapping ke leader)
+    site_name_kesalahan = db.Column(db.String(100), unique=True, nullable=False)
     leader_name = db.Column(db.String(100), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    
     def __repr__(self):
-        return f"<SiteConfig site='{self.site_name}' leader='{self.leader_name}'>"
+        return f"<SiteConfig livechat='{self.site_name_livechat}' kesalahan='{self.site_name_kesalahan}' leader='{self.leader_name}'>"
 
 class SpecialSheet(db.Model):
     __tablename__ = 'special_sheet'
@@ -66,16 +70,36 @@ def get_data_with_cache(cache_key, fetch_func, cache_ttl=300):
 
 # --- FUNGSI HELPER (TTL 24 JAM) ---
 
-def _fetch_leader_mapping_from_db():
+## FUNGSI BARU UNTUK LIVECHAT
+def _fetch_livechat_leader_mapping_from_db():
+    """Menggunakan site_name_livechat sebagai kunci mapping untuk Livechat."""
     try:
         results = SiteConfig.query.filter_by(is_active=True).order_by(SiteConfig.id).all()
-        return {item.site_name.upper(): item.leader_name for item in results}
+        # Menggunakan site_name_livechat
+        return {item.site_name_livechat.upper(): item.leader_name for item in results}
     except Exception:
         return {}
 
-def get_leader_mapping():
-    return get_data_with_cache('config:leader_mapping', _fetch_leader_mapping_from_db, cache_ttl=CACHE_TTL_24_JAM) 
+def get_livechat_leader_mapping():
+    """Mengembalikan mapping {site_name_livechat (UPPER): leader_name}."""
+    return get_data_with_cache('config:livechat_leader_mapping', _fetch_livechat_leader_mapping_from_db, cache_ttl=CACHE_TTL_24_JAM) 
 
+## FUNGSI BARU UNTUK KESALAHAN
+def _fetch_kesalahan_leader_mapping_from_db():
+    """Menggunakan site_name_kesalahan sebagai kunci mapping untuk Kesalahan."""
+    try:
+        results = SiteConfig.query.filter_by(is_active=True).order_by(SiteConfig.id).all()
+        # Menggunakan site_name_kesalahan
+        return {item.site_name_kesalahan.upper(): item.leader_name for item in results}
+    except Exception:
+        return {}
+
+def get_kesalahan_leader_mapping():
+    """Mengembalikan mapping {site_name_kesalahan (UPPER): leader_name}."""
+    return get_data_with_cache('config:kesalahan_leader_mapping', _fetch_kesalahan_leader_mapping_from_db, cache_ttl=CACHE_TTL_24_JAM) 
+
+
+# NOTE: Fungsi sebelumnya 'get_leader_mapping' dihapus/diganti dengan yang lebih spesifik.
 
 def _fetch_special_sheets_from_db():
     try:
@@ -140,22 +164,30 @@ def update_global_config(key, new_value):
         db.session.rollback()
         return False
 
-def update_or_add_site_config(site_id, site_name, leader_name):
+def update_or_add_site_config(site_id, site_name_livechat, site_name_kesalahan, leader_name):
+    """Diperbarui untuk menyimpan dua nama situs dan menghapus kedua cache leader mapping."""
     try:
         if str(site_id).startswith('new_'):
-            new_site = SiteConfig(site_name=site_name, leader_name=leader_name)
+            new_site = SiteConfig(
+                site_name_livechat=site_name_livechat, 
+                site_name_kesalahan=site_name_kesalahan, 
+                leader_name=leader_name
+            )
             db.session.add(new_site)
         else:
             site = SiteConfig.query.get(int(site_id))
             if site:
-                site.site_name = site_name
+                site.site_name_livechat = site_name_livechat
+                site.site_name_kesalahan = site_name_kesalahan
                 site.leader_name = leader_name
         
         db.session.commit()
-        _clear_cache('config:leader_mapping') 
+        # Hapus kedua cache saat konfigurasi situs diperbarui
+        _clear_cache(['config:livechat_leader_mapping', 'config:kesalahan_leader_mapping']) 
         return True
     except IntegrityError:
         db.session.rollback()
+        # IntegrityError terjadi jika site_name_livechat atau site_name_kesalahan duplikat
         return False
     except Exception:
         db.session.rollback()
@@ -167,7 +199,8 @@ def delete_site_config(site_id):
         if site:
             db.session.delete(site)
             db.session.commit()
-            _clear_cache('config:leader_mapping') 
+            # Hapus kedua cache saat konfigurasi situs dihapus
+            _clear_cache(['config:livechat_leader_mapping', 'config:kesalahan_leader_mapping']) 
             return True
         return False
     except Exception:

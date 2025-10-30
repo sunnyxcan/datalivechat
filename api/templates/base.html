@@ -47,12 +47,14 @@
         }
         
         /* LINK STYLES */
-        .table-kesalahan a {
+        .table-kesalahan a,
+        .table-kesalahan-fatal a { /* BARU: Tambahkan gaya untuk tabel fatal */
             color: #3b82f6;
             text-decoration: none;
             font-weight: 500;
         }
-        .table-kesalahan a:hover {
+        .table-kesalahan a:hover,
+        .table-kesalahan-fatal a:hover { /* BARU: Tambahkan gaya hover untuk tabel fatal */
             color: #2563eb;
             text-decoration: underline;
         }
@@ -77,8 +79,8 @@
 
             /* Diperbaiki: Menambahkan !important agar menimpa text-lg/px-3/py-1 bawaan Tailwind */
             .grand-total-label {
-                font-size: 0.75rem !important;     /* text-xs */
-                line-height: 1rem !important;      
+                font-size: 0.75rem !important;      /* text-xs */
+                line-height: 1rem !important;       
                 padding: 0.25rem 0.5rem !important; 
             }
             
@@ -146,6 +148,16 @@
             }
         }
         /* == AKHIR PERUBAHAN BARU == */
+        
+        /* NEW STYLE FOR KESALAHAN HEADER */
+        .kesalahan-header {
+            color: #3b82f6; /* Warna biru indigo */
+            font-weight: 700;
+            padding-top: 1rem;
+            margin-top: 1rem;
+            border-top: 1px solid #4b5563;
+        }
+
     </style>
     
     <div id="sidebar-overlay" class="fixed inset-0 bg-black opacity-0 z-40 transition-opacity duration-300 pointer-events-none lg:hidden"></div>
@@ -167,23 +179,49 @@
         </a>
         
         <div class="sheet-nav space-y-1 py-5">
-            <a href="{{ url_for('show_summary') }}"
+            <a href="{{ url_for('show_summary_livechat') }}"
                 class="block p-3 text-sm text-gray-300 rounded-lg transition duration-200 hover:bg-indigo-700 hover:text-white
-                {% if current_sheet == 'Ringkasan Total' %}bg-emerald-600 text-white font-semibold border-l-4 border-emerald-400 pl-[14px] hover:bg-emerald-700{% endif %}">
+                {% if current_sheet == 'Ringkasan Livechat' %}bg-emerald-600 text-white font-semibold border-l-4 border-emerald-400 pl-[14px] hover:bg-emerald-700{% endif %}">
                 <svg class="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                RINGKASAN TOTAL
+                Ringkasan Livechat
             </a>
 
+            <a href="{{ url_for('show_kesalahan_summary') }}" 
+                class="block p-3 text-sm text-gray-300 rounded-lg transition duration-200 hover:bg-indigo-700 hover:text-white
+                {% if current_sheet == 'Ringkasan Kesalahan' %}bg-indigo-600 text-white font-semibold border-l-4 border-blue-400 pl-[14px] hover:bg-indigo-700{% endif %}">
+                <svg class="w-4 h-4 inline-block mr-2 -mt-0.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                Ringkasan Kesalahan
+            </a>
+
+            {# Mulai Bagian Sheet KESALAHAN BARU #}
+            {% if kesalahan_sheet_names %}
             <div class="border-t border-gray-700 mt-2 pt-2"></div>
+            <p class="text-xs font-bold uppercase text-blue-400 mt-4 pt-2">Kesalahan Data Sheets</p>
+
+            {# Catatan: Anda perlu membuat route show_kesalahan_data di Flask untuk ini #}
+            {% for name in kesalahan_sheet_names %}
+                    <a href="{{ url_for('show_kesalahan_data', sheet_name=name) }}"
+                    class="block p-3 text-sm text-gray-300 rounded-lg transition duration-200 hover:bg-indigo-700 hover:text-white
+                    {% if name == current_sheet and current_sheet != 'Ringkasan Livechat' and name in kesalahan_sheet_names %}bg-indigo-600 text-white font-semibold border-l-4 border-blue-400 pl-[14px] hover:bg-indigo-700{% endif %}">
+                    <svg class="w-4 h-4 inline-block mr-2 -mt-0.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c1.657 0 3 .895 3 2s-1.343 2-3 2-3-.895-3-2 1.343-2 3-2zM9 17a3 3 0 006 0V5a2 2 0 00-2-2H9a2 2 0 00-2 2v12a3 3 0 002 0z"></path></svg>
+                    {{ name }}
+                </a>
+            {% endfor %}
+
+            {# Bagian Sheet Livechat #}
+            <div class="border-t border-gray-700 mt-2 pt-2"></div>
+            <p class="text-xs font-bold uppercase text-gray-400 mt-4 pt-2">Livechat Data Sheets</p>
 
             {% for name in sheet_names %}
                 <a href="{{ url_for('show_data', sheet_name=name) }}"
                     class="block p-3 text-sm text-gray-300 rounded-lg transition duration-200 hover:bg-indigo-700 hover:text-white
-                    {% if name == current_sheet and current_sheet != 'Ringkasan Total' %}bg-emerald-600 text-white font-semibold border-l-4 border-emerald-400 pl-[14px] hover:bg-emerald-700{% endif %}">
+                    {% if name == current_sheet and current_sheet != 'Ringkasan Livechat' %}bg-emerald-600 text-white font-semibold border-l-4 border-emerald-400 pl-[14px] hover:bg-emerald-700{% endif %}">
                     <svg class="w-4 h-4 inline-block mr-2 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     {{ name }}
                 </a>
             {% endfor %}
+            {% endif %}
+            {# Akhir Bagian Sheet KESALAHAN BARU #}
         </div>
     </div>
     {% endif %}

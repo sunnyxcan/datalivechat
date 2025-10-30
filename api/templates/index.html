@@ -1,18 +1,24 @@
 {% extends "base.html" %}
 
 {# Ganti judul sesuai sheet yang sedang dibuka #}
-{% block title %}Kesalahan Livechat ({{ current_sheet if current_sheet else 'Pilih Sheet' }}){% endblock %}
+{% block title %}{{ title_prefix if title_prefix else 'Data' }} ({{ current_sheet if current_sheet else 'Pilih Sheet' }}){% endblock %}
 
 {% block content %}
 
-    <h1 class="text-3xl font-extrabold text-gray-900 mb-6">Data Kesalahan Livechat: <span class="text-emerald-600">{{ current_sheet if current_sheet else 'Pilih Sheet' }}</span></h1>
+    <h1 class="text-3xl font-extrabold text-gray-900 mb-6">{{ title_prefix if title_prefix else 'Data' }}: <span class="text-emerald-600">{{ current_sheet if current_sheet else 'Pilih Sheet' }}</span></h1>
 
-    {% if current_sheet == 'Ringkasan Total' %}
-        {# Sertakan konten dari summary.html #}
-        {% include 'summary.html' %}
+    {% if current_sheet == 'Ringkasan Livechat' %}
+        {# Sertakan konten dari summary_livechat.html #}
+        {% include 'summary_livechat.html' %}
+    {% elif current_sheet == 'Ringkasan Kesalahan' %}
+        {# KONDISI BARU EKSPLISIT UNTUK RINGKASAN KESALAHAN #}
+        {% include 'summary_kesalahan.html' %}
+    {% elif title_prefix == 'Data Kesalahan Mistake' %}
+        {# Ini untuk data sheet bulanan (OKT25, NOV25, dll) yang menggunakan template_include #}
+        {% include template_include %}
     {% else %}
-        {# Sertakan konten dari detail.html (untuk sheet bulanan) #}
-        {% include 'detail.html' %}
+        {# Konten untuk sheet dari SPREADSHEET_LIVECHAT #}
+        {% include 'detail_livechat.html' %}
     {% endif %}
 
 {% endblock %}

@@ -69,11 +69,11 @@
                     <p class="mt-1 text-xs text-gray-500">ID unik Google Sheet yang akan diakses. Mengubah ini akan **memerlukan inisialisasi ulang** Sheets API.</p>
                 </div>
 
-                {# RANGE_KESALAHAN_DEFAULT #}
+                {# RANGE_LIVECHAT_DEFAULT #}
                 <div>
                     <label for="range_kesalahan" class="block text-sm font-medium text-gray-700">Range Default Kesalahan (Range A):</label>
                     <input type="text" id="range_kesalahan" name="range_kesalahan" 
-                        value="{{ global_config.get('RANGE_KESALAHAN_DEFAULT', '') }}"
+                        value="{{ global_config.get('RANGE_LIVECHAT_DEFAULT', '') }}"
                         class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500 text-sm" 
                         placeholder="Contoh: A1:C">
                     <p class="mt-1 text-xs text-gray-500">Range default untuk data kesalahan (misalnya, `A1:C`).</p>
