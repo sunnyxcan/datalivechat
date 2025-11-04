@@ -65,13 +65,9 @@ def calculate_staff_errors_from_kesalahan(kesalahan_data_all, staff_list):
     def normalize_name(name_raw):
         if not name_raw:
             return ""
-            
         name_str = str(name_raw)
-        
         name_clean = name_str.encode('ascii', 'ignore').decode('ascii').upper()
-        
         name_normalized = re.sub(r'[^A-Z0-9/]', '', name_clean) 
-        
         return name_normalized
         
     def clean_for_display(name_raw):
@@ -85,6 +81,11 @@ def calculate_staff_errors_from_kesalahan(kesalahan_data_all, staff_list):
         if row and row[0].strip():
             full_name_raw = row[0].strip()
             
+            # --- GUARDRAIL TAMBAHAN: Skip baris yang bernama 'TOTAL' ---
+            if full_name_raw.upper() == 'TOTAL':
+                continue
+            # ---------------------------------------------------------
+
             display_name_key_upper = normalize_name(full_name_raw) 
             display_name_clean_title = clean_for_display(full_name_raw)
 
@@ -698,7 +699,7 @@ def show_data(sheet_name, month_filter=None):
             staff_rows = []
             
     # Akhir dari blok else (untuk non-sheet khusus)
-            
+             
     # Memastikan current_filter_to_display valid
     if current_filter_to_display not in available_months:
         current_filter_to_display = available_months[0] if available_months else 'all'
