@@ -5,16 +5,52 @@
 {% set total_points_situs = rekap_per_situs_data | sum(attribute='point_total') %}
 {% set total_points_leader = rekap_per_leader_data | sum(attribute='point_total') %}
 
-<div class="space-y-10">
+{# Bagian Filter Bulan #}
+<div class="bg-white p-6 shadow-lg rounded-xl mb-10">
+    <h3 class="text-lg font-bold text-gray-800 mb-4">Pilih Bulan untuk Ringkasan</h3>
+    <form action="{{ url_for('show_kesalahan_summary') }}" method="GET" class="space-y-4">
+        <div class="flex flex-wrap gap-4 items-center">
+            <label class="text-sm font-medium text-gray-700">Filter Bulan:</label>
+            <div class="flex flex-wrap gap-3">
+                {% for month in available_months %}
+                    {% set is_selected = month in summary_sheet_names %}
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" name="sheets" value="{{ month }}" 
+                               {% if is_selected %}checked{% endif %}
+                               class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                        <span class="text-sm font-medium text-gray-900">{{ month }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+            <button type="submit" class="ml-auto px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                Tampilkan Ringkasan
+            </button>
+        </div>
+    </form>
+    
+    {# Tampilkan status filter yang aktif #}
+    {% if summary_sheet_names|length < available_months|length %}
+    <p class="mt-4 text-sm font-semibold text-blue-600">
+        Ringkasan Saat Ini: **{{ summary_sheet_names|join(', ') }}** </p>
+    {% else %}
+    <p class="mt-4 text-sm font-semibold text-green-600">
+        Ringkasan Saat Ini: **Semua Bulan** ({{ available_months|join(', ') }})
+    </p>
+    {% endif %}
+</div>
 
-    {# === BAGIAN 1: REKAP POIN PER SITUS (RINGKAS) === #}
+<div class="space-y-10">
+    
+    {# ===================================================================== #}
+    {# 🌐 RINGKASAN PER SITUS #}
+    {# ===================================================================== #}
+    
     <div class="bg-blue-50 border-l-4 border-blue-500 p-4 shadow-md mt-10">
         <div class="flex justify-between items-start mb-2">
             <h2 class="text-xl font-bold text-blue-700">
                 🌐 Ringkasan Poin Per Situs (Gabungan Bulan)
             </h2>
             
-            {# Grand Total Poin Situs di Kanan Atas #}
             <div class="bg-red-100 text-red-700 px-3 py-1 rounded-lg font-bold shadow-sm flex items-center">
                 <span class="text-xs uppercase mr-2">Grand Total Poin:</span>
                 <span class="text-lg">{{ total_points_situs | round(2) }}</span>
@@ -23,7 +59,6 @@
         <p class="text-sm text-gray-700">Tabel ini menyajikan akumulasi total kesalahan dan poin berdasarkan **Situs**.</p>
     </div>
 
-    {# Tinggi: max-h-[70vh] #}
     <div class="overflow-x-auto shadow-xl rounded-lg table-summary-situs-simple max-h-[70vh] overflow-y-auto"> 
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-blue-700 text-white sticky top-0 z-20"> 
@@ -49,28 +84,23 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 {% for rekap in rekap_per_situs_data %}
                 <tr class="hover:bg-blue-50">
-                    {# Kolom No. #}
-                    <td class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
+                    <td data-label="NO." class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
                         {{ loop.index }}
                     </td>
                     
-                    {# Kolom Situs (Sticky) #}
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 bg-blue-100/70 z-10 lg-sticky-col-cell"> 
+                    <td data-label="SITUS" class="lg-sticky-col-cell px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 bg-blue-100/70 z-10"> 
                         <span class="block">{{ rekap.situs }}</span>
                     </td>
 
-                    {# Kolom Jumlah Staf Terlibat #}
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
+                    <td data-label="STAF TERLIBAT" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
                         {{ rekap.staff_count }}
                     </td>
                     
-                    {# Total Kesalahan (Integer/Hitungan) #}
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-base font-bold text-red-700 bg-red-50/50">
+                    <td data-label="TOTAL KESALAHAN" class="px-6 py-4 whitespace-nowrap text-center text-base font-bold text-red-700 bg-red-50/50">
                         {{ rekap.total_kesalahan | int }}
                     </td>
                     
-                    {# Total Poin Akhir #}
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-lg font-extrabold text-white bg-red-600/90">
+                    <td data-label="TOTAL POIN" class="px-6 py-4 whitespace-nowrap text-center text-lg font-extrabold text-white bg-red-600/90">
                         {{ rekap.point_total | round(2) }}
                     </td>
                 </tr>
@@ -81,33 +111,27 @@
     
     <hr>
     
-    {# === BAGIAN 2: REKAP POIN PER STAF (LENGKAP) === #}
+    {# ===================================================================== #}
+    {# 📊 REKAP PER STAF #}
+    {# ===================================================================== #}
+    
     <div class="bg-blue-50 border-l-4 border-blue-500 p-4 shadow-md">
         
-        {# Container Utama: Membagi Kiri (Judul/Deskripsi) dan Kanan (Total) #}
         <div class="flex justify-between items-start mb-2">
             
-            {# SISI KIRI: Judul dan Deskripsi (Tumpuk Vertikal) #}
             <div class="flex flex-col">
-                
-                {# Judul: Ditambahkan mb-0 agar tidak ada spasi default yang besar di bawahnya #}
                 <h2 class="text-xl font-bold text-blue-700 mb-2">
                     📊 Rekap Poin Kesalahan Per Staf (Gabungan Bulan)
                 </h2>
-                
-                {# Deskripsi: Langsung di bawah Judul #}
                 <p class="text-sm text-gray-700">Ringkasan total kesalahan dan poin yang didapatkan per staf.</p>
             </div>
             
-            {# SISI KANAN: Grand Total #}
             <div class="flex flex-col space-y-3 items-end">
-                {# Total Staf Terkena Poin #}
                 <div class="bg-blue-100 text-blue-700 px-3 py-1 rounded-lg font-bold shadow-sm flex items-center">
-                    <span class="text-xs uppercase mr-2">Total Staf:</span>
-                    <span class="text-lg">{{ staff_terkena_poin }}</span>
+                    <span class="text-xs uppercase mr-2">Staf Kena Poin:</span>
+                    <span class="text-lg">{{ staff_terkena_poin }} / {{ staff_count }}</span>
                 </div>
                 
-                {# Total Kesalahan #}
                 <div class="bg-red-100 text-red-700 px-3 py-1 rounded-lg font-bold shadow-sm flex items-center">
                     <span class="text-xs uppercase mr-2">Total Kesalahan:</span>
                     <span class="text-lg">{{ total_kesalahan_staf | int }}</span>
@@ -117,12 +141,10 @@
         </div>
     </div>
 
-    {# Tinggi: max-h-[75vh] #}
     <div class="overflow-x-auto shadow-xl rounded-lg table-summary-staff-card max-h-[75vh] overflow-y-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-blue-700 text-white table-staff-leader-header sticky top-0 z-20"> 
                 <tr>
-                    {# Kolom No. #}
                     <th scope="col" class="py-3 px-3 text-center text-xs font-semibold uppercase tracking-wider">
                         No.
                     </th>
@@ -151,38 +173,31 @@
             <tbody class="bg-white divide-y divide-gray-200 staff-table-body">
                 {% for rekap in kesalahan_rekap_data %}
                 <tr class="hover:bg-blue-50">
-                    {# Kolom No. Menggunakan loop.index #}
                     <td data-label="NO." class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
                         {{ loop.index }}
                     </td>
                     
-                    {# Kolom Staf - Sticky #}
                     <td data-label="NAMA / PASSPORT" class="lg-sticky-col-cell px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 bg-blue-100/70 z-10">
                         <span class="block">{{ rekap.nama }}</span>
                         <span class="block text-xs font-medium text-gray-500">({{ rekap.passport }})</span>
                     </td>
                     
-                    {# Kolom Situs #}
                     <td data-label="SITUS" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
                         {{ rekap.situs if rekap.situs else '-' }}
                     </td>
                     
-                    {# Total Kesalahan (Integer/Hitungan) #}
                     <td data-label="TOTAL KESALAHAN" class="px-6 py-4 whitespace-nowrap text-center text-base font-bold text-red-700 bg-red-50/50">
                         {{ rekap.total_kesalahan | int }}
                     </td>
                     
-                    {# Total Poin DP #}
-                    <td data-label="POIN DP (x0.25)" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
+                    <td data-label="POIN DP" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
                         {{ rekap.point_dp | round(2) }}
                     </td>
 
-                    {# Total Poin WD #}
-                    <td data-label="POIN WD (x1.0)" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
+                    <td data-label="POIN WD" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
                         {{ rekap.point_wd | round(2) }}
                     </td>
                     
-                    {# Total Poin Akhir #}
                     <td data-label="TOTAL POIN" class="px-6 py-4 whitespace-nowrap text-center text-lg font-extrabold text-white bg-red-600/90">
                         {{ rekap.point_total | round(2) }}
                     </td>
@@ -194,14 +209,16 @@
 
     <hr>
     
-    {# === BAGIAN 3: REKAP POIN PER LEADER (BARU) === #}
+    {# ===================================================================== #}
+    {# 👑 REKAP PER LEADER #}
+    {# ===================================================================== #}
+    
     <div class="bg-blue-50 border-l-4 border-blue-500 p-4 shadow-md">
         <div class="flex justify-between items-start mb-2">
             <h2 class="text-xl font-bold text-blue-700">
                 👑 Rekap Poin Kesalahan Per Leader
             </h2>
             
-            {# Grand Total Poin Leader di Kanan Atas #}
             <div class="bg-red-600 text-white px-3 py-1 rounded-lg font-bold shadow-md flex items-center">
                 <span class="text-xs uppercase mr-2">Grand Total Poin:</span>
                 <span class="text-lg">{{ total_points_leader | round(2) }}</span>
@@ -210,7 +227,6 @@
         <p class="text-sm text-gray-700">Akumulasi total poin berdasarkan Leader yang menaungi Situs.</p>
     </div>
 
-    {# Tinggi: max-h-[75vh] #}
     <div class="overflow-x-auto shadow-xl rounded-lg table-summary-leader max-h-[75vh] overflow-y-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-red-700 text-white sticky top-0 z-20"> 
@@ -236,28 +252,23 @@
             <tbody class="bg-white divide-y divide-gray-200">
                 {% for rekap in rekap_per_leader_data %}
                 <tr class="hover:bg-red-50">
-                    {# Kolom No. #}
-                    <td class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
+                    <td data-label="NO." class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
                         {{ loop.index }}
                     </td>
                     
-                    {# Kolom Leader (Sticky) #}
-                    <td class="px-6 py-4 whitespace-nowrap text-base font-bold text-red-700 bg-red-100/70 z-10 lg-sticky-col-cell"> 
+                    <td data-label="NAMA LEADER" class="lg-sticky-col-cell px-6 py-4 whitespace-nowrap text-base font-bold text-red-700 bg-red-100/70 z-10"> 
                         <span class="block">{{ rekap.name }}</span>
                     </td>
 
-                    {# Kolom Total Kesalahan #}
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
+                    <td data-label="TOTAL KESALAHAN" class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700">
                         {{ rekap.total_kesalahan | int }}
                     </td>
                     
-                    {# Kolom Situs Detail #}
-                    <td class="px-6 py-4 whitespace-normal text-left text-sm text-gray-700 max-w-lg">
+                    <td data-label="SITUS TERLIBAT" class="px-6 py-4 whitespace-normal text-left text-sm text-gray-700 max-w-lg">
                         {{ rekap.situs_details }}
                     </td>
                     
-                    {# Total Poin Akhir #}
-                    <td class="px-6 py-4 whitespace-nowrap text-center text-xl font-extrabold text-white bg-red-900/90">
+                    <td data-label="TOTAL POIN" class="px-6 py-4 whitespace-nowrap text-center text-xl font-extrabold text-white bg-red-900/90">
                         {{ rekap.point_total | round(2) }}
                     </td>
                 </tr>

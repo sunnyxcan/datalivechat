@@ -2,103 +2,455 @@
 
 import re
 from urllib.parse import unquote
-from flask import render_template, redirect, url_for
+from flask import render_template, redirect, url_for, abort
 import math
+from datetime import datetime, timedelta
 
-# Impor dari 'app' dan 'routes_main'
 from .app import (
     app, SHEETS_SERVICE, 
     LIVECHAT_SPREADSHEET_ID, LIVECHAT_RANGE_KESALAHAN, LIVECHAT_RANGE_STAFF,
 )
 from .config import SUMMARY_LIVECHAT_ROUTE, TARGET_KESALAHAN_HEADERS, KHUSUS_KESALAHAN_HEADERS
-# PERUBAHAN DI SINI: Mengganti get_leader_mapping menjadi get_livechat_leader_mapping
 from .database import get_livechat_leader_mapping 
 from .sheets_api import (
     get_sheet_data, get_batch_sheet_data, calculate_sheet_total
 )
 from .filters import format_number
-from .routes_main import get_all_sheet_names # Impor fungsi pembantu
+from .routes_main import get_all_sheet_names 
 
 # =========================================================================
-# ROUTE LIVECHAT
+# FUNGSI UNTUK PERHITUNGAN KESALAHAN STAFF DARI DATA KESALAHAN
+# =========================================================================
+
+def calculate_staff_errors_from_kesalahan(kesalahan_data_all, staff_list):
+    
+    KESALAHAN_TYPES = [
+        "Tidak membantu / menyelesaikan kendala dengan benar", 
+        "Note Pengecekkan tidak berujung", 
+        "Tidak melakukan pengecekan", 
+        "Memberikan data penting ke member", 
+        "Reset pass tanpa persetujuan",
+        "Tidak memahami permainan", 
+        "Tidak respon permainan",
+        "Ubah data tanpa data lengkap",
+        "Salah indikator bank", 
+        "Mempermainkan member", 
+        "Telat minta maaf", 
+        "Salah informasi", 
+        "Salah respon", 
+        "Tidak respon", 
+        "Telat respon", 
+        "Tidak teliti", 
+        "Asal spam pk", 
+        "Tidak minta userid", 
+        "Fatal", 
+        "Capslock", 
+        "Tidak sopan", 
+        "Tidak meminta data pendukung", 
+        "SS admin", 
+        "Note", 
+    ]
+    
+    NEW_STAFF_HEADERS_ORDER = [
+        "Salah respon", "Salah informasi", "Telat minta maaf", "Tidak respon", "Telat respon", 
+        "Tidak membantu / menyelesaikan kendala dengan benar", "Tidak melakukan pengecekan", 
+        "Tidak teliti", "Asal spam pk", "Tidak minta userid", "Fatal", "Tidak memahami permainan", 
+        "Tidak respon permainan", "Memberikan data penting ke member", "Salah indikator bank", 
+        "Mempermainkan member", "Capslock", "Tidak sopan", "Ubah data tanpa data lengkap", 
+        "Reset pass tanpa persetujuan", "Tidak meminta data pendukung", "SS admin", "Note"
+    ]
+    NEW_STAFF_HEADERS_ORDER.append("PENGECEKKAN TIDAK BERUJUNG")
+
+    def normalize_name(name_raw):
+        if not name_raw:
+            return ""
+            
+        name_str = str(name_raw)
+        
+        name_clean = name_str.encode('ascii', 'ignore').decode('ascii').upper()
+        
+        name_normalized = re.sub(r'[^A-Z0-9/]', '', name_clean) 
+        
+        return name_normalized
+        
+    def clean_for_display(name_raw):
+        return re.sub(r'\s+', ' ', str(name_raw)).strip().title()
+    
+    staff_full_names = {}
+    staff_key_to_display_name = {} 
+    staff_summary = {}
+    
+    for row in staff_list:
+        if row and row[0].strip():
+            full_name_raw = row[0].strip()
+            
+            display_name_key_upper = normalize_name(full_name_raw) 
+            display_name_clean_title = clean_for_display(full_name_raw)
+
+            if display_name_key_upper not in staff_summary:
+                staff_summary[display_name_key_upper] = {
+                    'NAMA LENGKAP': display_name_clean_title,
+                    'TOTAL KESALAHAN': 0,
+                    'Detail Kesalahan': {k: 0 for k in NEW_STAFF_HEADERS_ORDER}
+                }
+            
+            staff_full_names[display_name_key_upper] = full_name_raw
+            staff_key_to_display_name[display_name_key_upper] = display_name_key_upper
+
+            name_parts = re.split(r'\s*/\s*|\s+/\s*', full_name_raw)
+            
+            for part in name_parts:
+                part_stripped = part.strip()
+                if part_stripped:
+                    clean_name_key = normalize_name(part_stripped)
+                    
+                    staff_full_names[clean_name_key] = part_stripped
+                    staff_key_to_display_name[clean_name_key] = display_name_key_upper
+    
+    note_pengecekan_map = {} 
+    
+    for row in kesalahan_data_all:
+        if len(row) < 3: 
+            continue
+        
+        staff_name_from_error = row[0].strip()
+        clean_staff_name_error = normalize_name(staff_name_from_error)
+        
+        error_type_from_error = row[2].strip()
+        clean_error_type = re.sub(r'\s+', ' ', error_type_from_error).strip().upper()
+
+        matching_staff_name_key = None
+        
+        if clean_staff_name_error in staff_full_names:
+            matching_staff_name_key = clean_staff_name_error
+            
+        if not matching_staff_name_key:
+            continue
+            
+        display_name_key = staff_key_to_display_name.get(matching_staff_name_key)
+        
+        if not display_name_key:
+            continue
+            
+        error_type_base = None
+        for et in KESALAHAN_TYPES:
+            if clean_error_type.startswith(et.upper()):
+                error_type_base = et
+                break
+            
+        if not error_type_base:
+            continue
+
+        if error_type_base == "Note Pengecekkan tidak berujung":
+            note_pengecekan_map[display_name_key] = note_pengecekan_map.get(display_name_key, 0) + 1
+            staff_summary[display_name_key]['Detail Kesalahan']['Note'] += 1
+            
+        elif error_type_base == "Note":
+            staff_summary[display_name_key]['Detail Kesalahan']['Note'] += 1
+            
+        elif error_type_base in NEW_STAFF_HEADERS_ORDER:
+            staff_summary[display_name_key]['Detail Kesalahan'][error_type_base] += 1
+            staff_summary[display_name_key]['TOTAL KESALAHAN'] += 1
+        
+    for staff_name_key, count in note_pengecekan_map.items():
+        if staff_name_key in staff_summary:
+            jumlah_pengecekan_berujung = math.floor(count / 10)
+            
+            staff_summary[staff_name_key]['Detail Kesalahan']['PENGECEKKAN TIDAK BERUJUNG'] = jumlah_pengecekan_berujung
+            
+            staff_summary[staff_name_key]['Detail Kesalahan']['Note'] -= count 
+            staff_summary[staff_name_key]['TOTAL KESALAHAN'] += jumlah_pengecekan_berujung 
+
+    new_staff_rows = []
+    final_headers = ["NAMA STAFF", "TOTAL KESALAHAN"] + NEW_STAFF_HEADERS_ORDER
+    total_kesalahan_staff_new = 0
+    
+    sorted_staff_keys = sorted(
+        staff_summary.keys(), 
+        key=lambda k: staff_summary[k]['TOTAL KESALAHAN'], 
+        reverse=True
+    )
+
+    for name_key in sorted_staff_keys:
+        data = staff_summary[name_key]
+            
+        row = [data['NAMA LENGKAP']] 
+        row.append(format_number(data['TOTAL KESALAHAN'])) 
+        total_kesalahan_staff_new += data['TOTAL KESALAHAN']
+        
+        for error_type in NEW_STAFF_HEADERS_ORDER:
+            val = max(0, data['Detail Kesalahan'].get(error_type, 0))
+            row.append(format_number(val))
+            
+        new_staff_rows.append(row)
+    
+    return final_headers, new_staff_rows, total_kesalahan_staff_new
+
+
+# =========================================================================
+# FUNGSI PEMBANTU UNTUK FILTER BULAN BERBASIS DELIMITER
+# =========================================================================
+
+def is_date_string(date_str, format_list=['%d/%m/%Y', '%d/%m/%y']): 
+    if not date_str:
+        return None
+    date_str = date_str.strip().encode('ascii', 'ignore').decode('ascii') 
+    
+    for fmt in format_list:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    return None
+
+def get_delimiter_indexes(kesalahan_data):
+    delimiter_map = {}
+    
+    for i, row in enumerate(kesalahan_data): 
+        if len(row) < 3: 
+            if len(row) > 1 and row[1]: 
+                date_obj = is_date_string(row[1])
+                if date_obj:
+                    month_key = date_obj.strftime('%m-%Y')
+                    if month_key not in delimiter_map:
+                         delimiter_map[month_key] = i
+                         
+            continue 
+            
+        is_delimiter_row = (not row[0] or not row[0].strip()) and (not row[2] or not row[2].strip())
+        
+        if is_delimiter_row:
+            date_obj = is_date_string(row[1])
+            if date_obj:
+                month_key = date_obj.strftime('%m-%Y')
+                if month_key not in delimiter_map:
+                    delimiter_map[month_key] = i
+                             
+    return delimiter_map
+
+def filter_kesalahan_by_month(kesalahan_data, month_filter):
+    if not month_filter or month_filter.lower() == 'all':
+        return kesalahan_data
+        
+    delimiter_map = get_delimiter_indexes(kesalahan_data)
+    
+    sorted_months = sorted(
+        delimiter_map.keys(), 
+        key=lambda x: datetime.strptime(x, '%m-%Y'), 
+        reverse=True
+    )
+    
+    if not sorted_months and month_filter not in delimiter_map:
+        return []
+        
+    end_index = len(kesalahan_data)
+    
+    try:
+        current_index_in_sorted = sorted_months.index(month_filter)
+        
+        if current_index_in_sorted > 0:
+            next_month_key = sorted_months[current_index_in_sorted - 1] 
+            end_index = delimiter_map[next_month_key] 
+            
+    except ValueError:
+        pass 
+        
+    start_index = 0
+    
+    try:
+        if month_filter in delimiter_map:
+            start_index = delimiter_map[month_filter] 
+        else:
+            if sorted_months:
+                latest_month_str = sorted_months[0]
+                start_index = delimiter_map[latest_month_str] + 1
+            
+    except Exception: 
+        pass
+        
+    if start_index >= end_index:
+        return []
+    
+    return kesalahan_data[start_index:end_index]
+
+def get_available_months(kesalahan_data):
+    delimiter_map = get_delimiter_indexes(kesalahan_data)
+    months = list(delimiter_map.keys()) 
+    
+    now = datetime.now()
+    current_month_str = now.strftime('%m-%Y')
+
+    if months:
+        latest_month_str = max(months, key=lambda x: datetime.strptime(x, '%m-%Y'))
+        latest_delimiter_index = delimiter_map[latest_month_str]
+        latest_month_obj = datetime.strptime(latest_month_str, '%m-%Y')
+        
+        has_new_error_data = False
+        
+        for i in range(latest_delimiter_index + 1, len(kesalahan_data)):
+            row = kesalahan_data[i]
+            
+            if (len(row) >= 3 and 
+                row[0] and row[0].strip() and           
+                row[2] and row[2].strip() and           
+                not is_date_string(row[1])
+               ):
+                has_new_error_data = True
+                break
+        
+        if has_new_error_data:
+            
+            next_month = (latest_month_obj.replace(day=28) + timedelta(days=4)).replace(day=1)
+            next_month_str = next_month.strftime('%m-%Y')
+            
+            if next_month_str == current_month_str:
+                 if next_month_str not in months:
+                     months.append(next_month_str)
+        
+    elif kesalahan_data:
+        if len(kesalahan_data) > 0 and kesalahan_data[0][0] and kesalahan_data[0][0].strip():
+             months.append(current_month_str)
+
+    try:
+        sorted_months = sorted(
+            months, 
+            key=lambda x: datetime.strptime(x, '%m-%Y'), 
+            reverse=True
+        )
+    except ValueError:
+        sorted_months = sorted(months, reverse=True)
+            
+    return sorted_months
+
+
+# =========================================================================
+# ROUTE LIVECHAT (show_summary_livechat)
 # =========================================================================
 
 @app.route(f'/{SUMMARY_LIVECHAT_ROUTE}')
-def show_summary_livechat():
+@app.route(f'/{SUMMARY_LIVECHAT_ROUTE}/<month_filter>') 
+# Ubah default 'all' menjadi None. Jika route dipanggil tanpa filter, month_filter adalah None.
+def show_summary_livechat(month_filter=None): 
     if SHEETS_SERVICE is None:
         return redirect(url_for('home'))
 
-    # Ambil semua nama sheet untuk navigasi
     sheet_names_livechat, kesalahan_sheet_names, sheet_khusus = get_all_sheet_names()
-    
-    # PERUBAHAN DI SINI: Menggunakan fungsi yang baru
     leader_mapping = get_livechat_leader_mapping()
-    sheet_names_from_api = sheet_names_livechat # Nama sheet Livechat bulanan
     
-    # Livechat Summary TIDAK menggunakan leader_mapping, tapi menggunakan daftar sheet Livechat.
-    # Namun, bagian di bawah ini menggunakan leader_mapped_sites_uppercase untuk menentukan situs mana yang VALID/dimonitor.
+    sheets_to_process = [name for name in sheet_names_livechat if name not in sheet_khusus]
     leader_mapped_sites_uppercase = {k.upper(): v for k, v in leader_mapping.items()}
-    all_sites_map = {}
-    
-    sheets_to_process = [name for name in sheet_names_from_api if name not in sheet_khusus]
-    # Catatan: Jika sheet Livechat dan sheet Kesalahan memiliki nama yang sama, 
-    # proses ini masih menggunakan nama sheet Livechat (karena kita mengambil dari sheet_names_livechat)
     sites_for_batch_read = list({name.upper() for name in sheets_to_process if name.upper() in leader_mapped_sites_uppercase})
-    
-    for site_upper, leader in leader_mapped_sites_uppercase.items():
-        all_sites_map[site_upper] = {
-            'total': 0,
-            'url': url_for('show_data', sheet_name=site_upper)
-        }
 
-    ranges_to_get = [f"'{sheet_name}'!{LIVECHAT_RANGE_STAFF}" for sheet_name in sites_for_batch_read]
-    batch_results = get_batch_sheet_data(SHEETS_SERVICE, ranges_to_get, LIVECHAT_SPREADSHEET_ID)
+    # Siapkan ranges, combined_ranges, num_sites (Kode ini tetap sama)
+    ranges_to_get_kesalahan = [f"'{sheet_name}'!{LIVECHAT_RANGE_KESALAHAN}" for sheet_name in sites_for_batch_read]
+    ranges_to_get_staff = [f"'{sheet_name}'!{LIVECHAT_RANGE_STAFF}" for sheet_name in sites_for_batch_read]
+    combined_ranges = ranges_to_get_kesalahan + ranges_to_get_staff
+    num_sites = len(sites_for_batch_read)
     
-    grand_total = 0
-    staff_summary_map = {} 
-    staff_list_details = []
-    leader_summary_map = {} 
-    
-    leader_names = {name.strip().upper() for name in leader_mapping.values()}
-    all_staff_names_from_leaders = set(leader_names)
+    batch_results = get_batch_sheet_data(SHEETS_SERVICE, combined_ranges, LIVECHAT_SPREADSHEET_ID)
 
+    # Inisialisasi map (Kode ini tetap sama)
+    site_errors_map = {} 
+    staff_total_map_per_site = {} 
+    available_months_set = set()
+    
+    # 1. Iterasi dan Filter Data Kesalahan (Mencari Semua Bulan yang Tersedia)
+    for i, sheet_name_upper in enumerate(sites_for_batch_read):
+        raw_error_data_range = batch_results[i]
+        filtered_kesalahan_data_raw = raw_error_data_range.get('values', [])
+        
+        if filtered_kesalahan_data_raw and len(filtered_kesalahan_data_raw) > 0:
+            kesalahan_data_raw_no_header = filtered_kesalahan_data_raw[1:]
+            
+            # Kumpulkan semua bulan yang tersedia dari semua sheets
+            current_months = get_available_months(kesalahan_data_raw_no_header)
+            available_months_set.update(current_months)
+
+    # Sortir bulan yang tersedia untuk ditampilkan
+    try:
+        final_available_months = sorted(
+            list(available_months_set), 
+            key=lambda x: datetime.strptime(x, '%m-%Y'), 
+            reverse=True
+        )
+    except ValueError:
+        final_available_months = sorted(list(available_months_set), reverse=True)
+
+    # =======================================================
+    # LOGIKA DEFAULT BULAN INI (BULAN TERBARU) - MODIFIKASI INTI
+    # =======================================================
+    # Jika month_filter adalah None (dari route tanpa filter) atau 'all', 
+    # gunakan bulan terbaru yang tersedia sebagai filter yang sebenarnya.
+    
+    # 1. Tentukan filter aktual untuk perhitungan data
+    actual_month_filter = month_filter
+    if not actual_month_filter or actual_month_filter.lower() == 'all':
+        actual_month_filter = final_available_months[0] if final_available_months else 'all'
+    
+    # 2. Tentukan nilai filter yang akan ditampilkan di dropdown (Display)
+    current_month_filter_display = actual_month_filter
+    # Jika filter yang asli adalah None/'all', tampilkan bulan terbaru yang digunakan untuk perhitungan
+    if not month_filter or month_filter.lower() == 'all':
+        current_month_filter_display = actual_month_filter
+    else:
+        current_month_filter_display = month_filter
+    
+    
+    # 3. Iterasi Ulang dan Hitung Total Menggunakan Filter yang Tepat
     for i, sheet_name_upper in enumerate(sites_for_batch_read):
         
-        if i < len(batch_results) and sheet_name_upper in all_sites_map:
-            result_range = batch_results[i]
-            staff_data = result_range.get('values', [])
+        # Ambil Data Kesalahan Mentah (Index i) - Data sudah di-fetch di langkah 1
+        raw_error_data_range = batch_results[i]
+        filtered_kesalahan_data_raw = raw_error_data_range.get('values', [])
+        
+        if filtered_kesalahan_data_raw and len(filtered_kesalahan_data_raw) > 0:
+            kesalahan_data_raw_no_header = filtered_kesalahan_data_raw[1:]
             
-            filtered_staff_data = [
-                row for row in staff_data if any(cell and cell.strip() for cell in row)
-            ]
+            # Filter data berdasarkan actual_month_filter
+            kesalahan_data_filtered_by_month = filter_kesalahan_by_month(kesalahan_data_raw_no_header, actual_month_filter)
             
-            total_situs, staff_rows = calculate_sheet_total(filtered_staff_data)
-            
-            all_sites_map[sheet_name_upper]['total'] = total_situs
-            grand_total += total_situs
-            
-            leader_name = leader_mapping.get(sheet_name_upper)
-            if leader_name:
-                leader_summary_map[leader_name] = leader_summary_map.get(leader_name, 0) + total_situs
-            
-            for row in staff_rows:
-                if len(row) > 1:
+            # Ambil Data Staf Mentah (Index i + num_sites)
+            raw_staff_data_range = batch_results[i + num_sites]
+            staff_data_raw = raw_staff_data_range.get('values', [])
+            staff_list_for_calc = []
+            if staff_data_raw and len(staff_data_raw) > 1:
+                staff_list_for_calc = [row for row in staff_data_raw[1:] if row and row[0].strip()]
+
+            # Hitung total kesalahan per staf menggunakan data kesalahan yang sudah difilter
+            if staff_list_for_calc:
+                _, staff_rows_calculated, total_kesalahan_situs = calculate_staff_errors_from_kesalahan(
+                    kesalahan_data_filtered_by_month, staff_list_for_calc 
+                )
+                
+                # Update ringkasan situs
+                site_errors_map[sheet_name_upper] = total_kesalahan_situs
+                
+                # Kumpulkan detail staf untuk perhitungan grand summary
+                staff_total_map_per_site[sheet_name_upper] = {}
+                for row in staff_rows_calculated:
                     staff_name = row[0].strip().upper()
-                    if not staff_name or staff_name.lower() == 'total':
-                        continue
-                        
-                    num_str = re.sub(r'[^\d]', '', row[1].strip())
-                    staff_total = int(num_str) if num_str.isdigit() else 0
-                    
-                    all_staff_names_from_leaders.add(staff_name)
-                    
-                    if staff_name:
-                        staff_list_details.append({
-                            'name': staff_name,
-                            'situs': sheet_name_upper,
-                            'total': staff_total
-                        })
-                        staff_summary_map[staff_name] = staff_summary_map.get(staff_name, 0) + staff_total
+                    # Ambil nilai total kesalahan (kolom kedua)
+                    total_str = row[1].replace('.', '') 
+                    staff_total_map_per_site[sheet_name_upper][staff_name] = int(total_str) if total_str.isdigit() else 0
+                
+            else:
+                site_errors_map[sheet_name_upper] = 0
+        else:
+            site_errors_map[sheet_name_upper] = 0
+
+    # 4. Agregasi Hasil Perhitungan (Situs, Staf, Leader)
+    
+    grand_total = sum(site_errors_map.values())
+    all_sites_map = {}
+    
+    for site_upper, total in site_errors_map.items():
+        # Pastikan link ke detail situs menggunakan filter yang AKTIF (actual_month_filter)
+        all_sites_map[site_upper] = {
+            'total': total,
+            'url': url_for('show_data', sheet_name=site_upper, month_filter=actual_month_filter) 
+        }
+
+    # ... (Kode agregasi summary_data, staff_summary, dan leader_summary tetap sama) ...
 
     summary_data = [] 
     for site_upper, details in all_sites_map.items():
@@ -109,16 +461,28 @@ def show_summary_livechat():
         })
         
     summary_data.sort(key=lambda x: x['total'], reverse=True) 
+
+    # Agregasi Staf
+    staff_summary_map_total = {}
+    staff_list_details = []
     
-    # Perhitungan Staf Summary
-    for staff_name in all_staff_names_from_leaders:
-        if staff_name not in staff_summary_map:
-            staff_summary_map[staff_name] = 0
-            
-    # Filter staf yang bukan Leader (berdasarkan leader_mapping.values())
-    staff_names_only = {name for name in staff_summary_map.keys() if name.title() not in leader_mapping.values()}
+    for site_upper, staff_data in staff_total_map_per_site.items():
+        for staff_name, total in staff_data.items():
+            staff_summary_map_total[staff_name] = staff_summary_map_total.get(staff_name, 0) + total
+            if total > 0: 
+                 staff_list_details.append({
+                     'name': staff_name,
+                     'situs': site_upper,
+                     'total': total
+                   })
+                   
+    # ... (lanjutan agregasi staff) ...
+    all_staff_names_from_leaders = {name.strip().upper() for name in leader_mapping.values()}
+    all_staff_names_from_leaders.update(staff_summary_map_total.keys())
+    
+    staff_names_only = {name for name in all_staff_names_from_leaders if name.title() not in leader_mapping.values()}
     staff_summary_map_filtered = {
-        name: staff_summary_map[name] for name in staff_names_only
+        name: staff_summary_map_total.get(name, 0) for name in staff_names_only
     }
     
     unique_staff_names = sorted(
@@ -154,21 +518,21 @@ def show_summary_livechat():
             'grand_total_staff': total_keseluruhan
         })
         staff_grand_total += total_keseluruhan
-
-    # Perhitungan Leader Summary
+    
+    # Perhitungan Leader Summary 
     final_summary_leader_data = [] 
     leader_grand_total = 0
     leader_details_map = {leader: {'total': 0, 'sites': []} for leader in leader_mapping.values()}
     
-    for original_situs_name_upper, details in all_sites_map.items():
+    for original_situs_name_upper, total_error_site in site_errors_map.items():
         leader_name = leader_mapping.get(original_situs_name_upper)
 
         if leader_name:
-            leader_details_map[leader_name]['total'] += details['total']
+            leader_details_map[leader_name]['total'] += total_error_site
             
             leader_details_map[leader_name]['sites'].append({
                 'name': original_situs_name_upper.title(),
-                'total': details['total']
+                'total': total_error_site
             })
 
     sorted_leaders = sorted(
@@ -191,88 +555,145 @@ def show_summary_livechat():
         })
         leader_grand_total += total
         
+    # Tambahkan available_months dan current_month_filter ke render_template
     return render_template('index.html',
-                           current_sheet='Ringkasan Livechat', 
-                           sheet_names=sheet_names_livechat, 
-                           kesalahan_sheet_names=kesalahan_sheet_names, 
-                           summary_data=summary_data, 
-                           grand_total=grand_total,
-                           summary_staff_data=final_summary_staff_data, 
-                           staff_grand_total=staff_grand_total,
-                           summary_leader_data=final_summary_leader_data, 
-                           leader_grand_total=leader_grand_total,
-                           title_prefix='Data Kesalahan Livechat'
-                           )
+                            current_sheet='Ringkasan Livechat', 
+                            sheet_names=sheet_names_livechat, 
+                            kesalahan_sheet_names=kesalahan_sheet_names, 
+                            summary_data=summary_data, 
+                            grand_total=grand_total,
+                            summary_staff_data=final_summary_staff_data, 
+                            staff_grand_total=staff_grand_total,
+                            summary_leader_data=final_summary_leader_data, 
+                            leader_grand_total=leader_grand_total,
+                            title_prefix='Data Kesalahan Livechat',
+                            available_months=final_available_months, 
+                            # Menggunakan 'current_month_filter_display' agar dropdown menampilkan bulan yang difilter
+                            current_month_filter=current_month_filter_display 
+                            )
 
+
+# =========================================================================
+# ROUTE LIVECHAT (show_data - MENGGUNAKAN FILTER BULAN BARU)
+# =========================================================================
 
 @app.route('/<sheet_name>')
-def show_data(sheet_name):
+@app.route('/<sheet_name>/<month_filter>') 
+def show_data(sheet_name, month_filter='all'): # month_filter defaultnya adalah 'all'
     if SHEETS_SERVICE is None:
         return redirect(url_for('home'))
 
     sheet_name = unquote(sheet_name)
     
-    # Ambil semua nama sheet untuk navigasi
     sheet_names_livechat, kesalahan_sheet_names, sheet_khusus = get_all_sheet_names()
     sheet_names = sheet_names_livechat 
     
-    kesalahan_data = []
+    range_kesalahan_default = LIVECHAT_RANGE_KESALAHAN 
+
+    kesalahan_data_all = [] 
+    kesalahan_data_filtered = [] 
     kesalahan_headers = []
     staff_headers = []
     staff_rows = []
     total_kesalahan_staff = 0
+    available_months = [] 
 
+    # Logika untuk sheet khusus tetap sama
     if sheet_name in sheet_khusus:
-        # Sheet Khusus (custom range)
+        # ... (Logika untuk sheet khusus tetap sama) ...
+        # ... (Penghitungan dan pengisian variabel tetap sama) ...
         range_kesalahan = sheet_khusus[sheet_name]
-
-        kesalahan_data = get_sheet_data(
-            SHEETS_SERVICE,
-            sheet_name,
-            range_kesalahan,
-            expected_columns=3,
-            spreadsheet_id=LIVECHAT_SPREADSHEET_ID
+        kesalahan_data_all = get_sheet_data(
+            SHEETS_SERVICE, sheet_name, range_kesalahan, expected_columns=3, spreadsheet_id=LIVECHAT_SPREADSHEET_ID
         )
-
         kesalahan_headers = KHUSUS_KESALAHAN_HEADERS
-
+        kesalahan_data_filtered = kesalahan_data_all
+        total_kesalahan_staff = len(kesalahan_data_filtered)
+        
+        # Inisialisasi available_months untuk sheet khusus jika diperlukan
+        if kesalahan_data_all:
+             available_months = get_available_months(kesalahan_data_all)
+        
     else:
-        # Sheet Livechat Bulanan (batch read untuk data kesalahan dan staf)
         ranges_for_sheet = [
-            f"'{sheet_name}'!{LIVECHAT_RANGE_KESALAHAN}",
-            f"'{sheet_name}'!{LIVECHAT_RANGE_STAFF}"
+            f"'{sheet_name}'!{range_kesalahan_default}", 
+            f"'{sheet_name}'!{LIVECHAT_RANGE_STAFF}" 
         ]
         
         batch_results = get_batch_sheet_data(SHEETS_SERVICE, ranges_for_sheet, LIVECHAT_SPREADSHEET_ID)
         
-        # Data Kesalahan
         batch_0 = batch_results[0].get('values', []) if len(batch_results) > 0 else []
-        
-        filtered_kesalahan_data = [
+        filtered_kesalahan_data_raw = [
             row for row in batch_0 if any(cell and cell.strip() for cell in row)
         ]
 
-        kesalahan_headers = TARGET_KESALAHAN_HEADERS
-        if filtered_kesalahan_data:
-            kesalahan_data = [
-                (row + [''] * (3 - len(row)))[:3] for row in filtered_kesalahan_data[1:]
+        # Inisialisasi bulan terbaru
+        latest_month = None
+        
+        if filtered_kesalahan_data_raw:
+            kesalahan_data_raw_no_header = filtered_kesalahan_data_raw[1:] 
+            available_months = get_available_months(kesalahan_data_raw_no_header)
+            
+            # Tentukan bulan terbaru
+            if available_months:
+                latest_month = available_months[0]
+
+            # =======================================================
+            # MODIFIKASI INTI: Tentukan filter yang akan digunakan untuk data
+            # =======================================================
+            actual_month_filter = month_filter
+            if month_filter.lower() == 'all' and latest_month:
+                # Jika filter di URL adalah 'all' atau tidak ada (default), 
+                # gunakan bulan terbaru untuk memfilter data.
+                actual_month_filter = latest_month
+            
+            # Gunakan actual_month_filter untuk memfilter data
+            kesalahan_data_for_calc = filter_kesalahan_by_month(kesalahan_data_raw_no_header, actual_month_filter)
+            
+            kesalahan_data_filtered = [
+                (row + [''] * (3 - len(row)))[:3] for row in kesalahan_data_for_calc
             ]
+            # data_all digunakan untuk perhitungan staff, harus sesuai dengan filter yang aktif
+            kesalahan_data_all = kesalahan_data_for_calc 
         else:
-            kesalahan_data = []
+            kesalahan_data_all = []
+            kesalahan_data_filtered = []
+            available_months = []
+        
+        # ... (Logika staff data tetap sama) ...
 
-        # Data Staf
-        staff_data = batch_results[1].get('values', []) if len(batch_results) > 1 else []
-
-        filtered_staff_data = [
-            row for row in staff_data if any(cell and cell.strip() for cell in row)
+        kesalahan_headers = TARGET_KESALAHAN_HEADERS
+        
+        batch_1 = batch_results[1].get('values', []) if len(batch_results) > 1 else []
+        staff_data_raw = [
+            row for row in batch_1 if row and row[0].strip()
         ]
         
-        staff_headers = filtered_staff_data[0] if filtered_staff_data else []
-        total_kesalahan_staff, staff_rows = calculate_sheet_total(filtered_staff_data)
-    
+        staff_list_for_calc = []
+        if staff_data_raw and len(staff_data_raw) > 1:
+            staff_list_for_calc = staff_data_raw[1:]
+
+        if staff_list_for_calc: 
+            staff_headers, staff_rows, total_kesalahan_staff = calculate_staff_errors_from_kesalahan(
+                kesalahan_data_all, staff_list_for_calc # menggunakan data yang sudah difilter
+            )
+        else:
+            staff_headers = staff_data_raw[0] if staff_data_raw else []
+            total_kesalahan_staff = 0
+            staff_rows = []
+
+    # =======================================================
+    # MODIFIKASI TERAKHIR: Tentukan nilai yang akan di-select di dropdown (Template)
+    # =======================================================
+    current_filter_to_display = month_filter
+    if month_filter.lower() == 'all' and latest_month:
+        # Jika filter di URL adalah 'all', tapi data yang tampil adalah bulan terbaru, 
+        # maka kirim bulan terbaru sebagai filter aktif ke template.
+        current_filter_to_display = latest_month
+        
     return render_template('index.html',
                            kesalahan_headers=kesalahan_headers,
-                           kesalahan_data=kesalahan_data,
+                           kesalahan_data=kesalahan_data_filtered, 
                            staff_headers=staff_headers,
                            staff_rows=staff_rows,
                            current_sheet=sheet_name,
@@ -280,5 +701,7 @@ def show_data(sheet_name):
                            kesalahan_sheet_names=kesalahan_sheet_names, 
                            total_kesalahan_staff=total_kesalahan_staff,
                            SHEET_KHUSUS=sheet_khusus,
-                           title_prefix='Data Kesalahan Livechat'
+                           title_prefix='Data Kesalahan Livechat',
+                           available_months=available_months, 
+                           current_month_filter=current_filter_to_display # Menggunakan nilai yang benar untuk display
                            )

@@ -2,6 +2,45 @@
 
 <div class="flex flex-wrap gap-5 mb-10 items-start">
 
+    {# PENGATURAN FILTER BULAN #}
+    <div class="w-full bg-white shadow-xl rounded-lg p-4 border border-gray-100 flex justify-between items-center mb-4">
+        <h3 class="text-xl font-semibold text-gray-700">Filter Bulan</h3>
+        {% if available_months %}
+            <div class="flex items-center space-x-2">
+                <label for="month-filter" class="text-gray-600">Pilih Bulan:</label>
+                <select id="month-filter" 
+                        class="border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
+                    
+                    {# Opsi Default: Semua Data #}
+                    <option value="{{ url_for('show_summary_livechat') }}"
+                            {% if current_month_filter == 'all' %}selected{% endif %}>
+                        Semua Data
+                    </option>
+
+                    {# Opsi Bulan Tersedia #}
+                    {% for month in available_months %}
+                        {% set month_parts = month.split('-') %}
+                        {% set formatted_month = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+                                                "Juli", "Agustus", "September", "Oktober", "November", "Desember"][(month_parts[0] | int) - 1] ~ " " ~ month_parts[1] %}
+                        
+                        <option value="{{ url_for('show_summary_livechat', month_filter=month) }}"
+                                {% if current_month_filter == month %}selected{% endif %}>
+                            {{ formatted_month }}
+                        </option>
+                    {% endfor %}
+
+                </select>
+                <script>
+                    document.getElementById('month-filter').addEventListener('change', function() {
+                        window.location.href = this.value;
+                    });
+                </script>
+            </div>
+        {% else %}
+             <span class="text-sm text-gray-500 italic">Tidak ada bulan yang teridentifikasi.</span>
+        {% endif %}
+    </div>
+
     {# RINGKASAN SITUS #}
     <div class="table-summary table-summary-situs-card w-full lg:flex-1 lg:basis-[calc(40%-10px)] bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100">
 

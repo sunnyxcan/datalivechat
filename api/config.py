@@ -8,7 +8,7 @@ load_dotenv()
 # --- LIVECHAT CONFIGURATION ---
 SPREADSHEET_LIVECHAT = os.environ.get('SPREADSHEET_LIVECHAT', '1TkOeAMhwlmG1WftjAyJAlSBYzbR-JPum4sTIKliPtss')
 RANGE_LIVECHAT_DEFAULT = os.environ.get('RANGE_LIVECHAT_DEFAULT', 'A1:C')
-RANGE_STAFF_LIVECHAT = os.environ.get('RANGE_STAFF_LIVECHAT', 'H1:AH')
+RANGE_STAFF_LIVECHAT = os.environ.get('RANGE_STAFF_LIVECHAT', 'H1:H')
 
 SUMMARY_LIVECHAT_ROUTE = os.environ.get('SUMMARY_LIVECHAT_ROUTE', 'summary-livechat')
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']

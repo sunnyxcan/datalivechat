@@ -1,19 +1,77 @@
 {% if kesalahan_rekap_data %}
 <div class="table-kesalahan-rekap w-full bg-white shadow-xl rounded-lg overflow-hidden border border-gray-100 p-4 mt-8">
-    <div class="flex justify-between items-center mb-4 px-2 pt-2">
+
+    {# --- JUDUL REKAP & GRAND TOTAL BARU DIMULAI DI SINI (Di atas Tabel) --- #}
+    <div class="flex justify-between items-center mb-4 px-2 pt-2 mt-4">
+        
+        {# Judul Rekap #}
         <h2 class="text-2xl font-semibold text-gray-800">📝 Rekapitulasi Kesalahan & Poin Per Staf</h2>
         
-        {# Grand Total dipindahkan ke kanan atas #}
+        {# Grand Total dipindahkan di sini #}
         <div class="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold shadow-md flex items-center">
             <span class="text-sm uppercase mr-2">Grand Total Kesalahan:</span>
             
-            {# Hitung dan bulatkan ke INTEGER #}
-            <span class="text-xl">{{ (kesalahan_rekap_data | sum(attribute='total_kesalahan')) | int }}</span>
+            <span class="text-xl">{{ total_kesalahan_staff | int }}</span> 
         </div>
     </div>
-    
+    {# --- JUDUL REKAP & GRAND TOTAL BARU SELESAI DI SINI --- #}
+
+    {# --- BLOK FILTER & SEARCH BARU DIMULAI DI SINI (Tidak Berubah) --- #}
+    <div class="flex flex-wrap justify-between items-end border-t border-gray-200 mb-4 px-2 pt-2 gap-4">
+
+        {# Area Kiri: Filter (Form) #}
+        <form method="GET" class="flex flex-wrap gap-4 items-end bg-gray-100 p-3 rounded-lg border border-gray-200" id="filterForm">
+            
+            {# Info Sheet Bulan #}
+            <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Sheet Bulan</label>
+                <input type="text" value="{{ current_sheet }}" disabled class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-200 text-gray-700 text-sm">
+                <input type="hidden" name="sheets" value="{{ current_sheet }}">
+            </div>
+
+            {# Filter Situs #}
+            <div>
+                <label for="situs-select" class="block text-xs font-medium text-gray-700 mb-1">Filter Situs</label>
+                <select id="situs-select" name="situs" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <option value="" {% if not selected_situs %}selected{% endif %}>Semua Situs</option>
+                    
+                    {% for situs in available_situs %}
+                    <option 
+                        value="{{ situs }}" 
+                        {% if selected_situs and situs == selected_situs[0] %}selected{% endif %}
+                    >{{ situs }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            {# Tombol Terapkan & Hapus Filter #}
+            <div class="flex gap-2">
+                <button type="submit" class="px-3 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700 transition duration-150 shadow-md text-sm">
+                    Terapkan
+                </button>
+                
+                {% if selected_situs %}
+                <a href="{{ url_for('show_kesalahan_data', sheet_name=current_sheet) }}" class="px-3 py-2 bg-gray-400 text-white font-semibold rounded-md hover:bg-gray-500 transition duration-150 shadow-md text-sm">
+                    Hapus
+                </a>
+                {% endif %}
+            </div>
+        </form>
+
+        {# Area Kanan: Kolom Pencarian SAJA (Grand Total dipindahkan ke bawah) #}
+        <div class="flex flex-col gap-4 items-end">
+            
+            {# Kolom Pencarian #}
+            <div>
+                <label for="search-input" class="block text-xs font-medium text-gray-700 mb-1">Cari Staf</label>
+                <input type="text" id="search-input" placeholder="Nama atau Passport..." class="px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 text-sm w-64" onkeyup="filterTable()">
+            </div>
+        </div>
+    </div>
+    {# --- BLOK FILTER & SEARCH BARU SELESAI DI SINI --- #}
+
     <div class="overflow-x-auto max-h-[75vh]">
-        <table class="data-table w-full text-sm text-left border-collapse">
+        <table class="data-table w-full text-sm text-left border-collapse" id="kesalahanTable">
             <thead class="text-xs text-white uppercase bg-indigo-600 sticky top-0">
                 <tr>
                     <th scope="col" class="px-6 py-3">No.</th>
@@ -70,13 +128,8 @@
                                     <tr>
                                         <th class="px-4 py-2 border-r">Tanggal</th>
                                         <th class="px-4 py-2 border-r text-center">Tipe (DP/WD)</th>
-                                        
-                                        {# KOREKSI: Tambahkan kolom Point DP di detail #}
                                         <th class="px-4 py-2 border-r text-center">Point DP</th>
-                                        
-                                        {# KOREKSI: Tambahkan kolom Point WD di detail #}
                                         <th class="px-4 py-2 border-r text-center">Point WD</th>
-                                        
                                         <th class="px-4 py-2 text-right">Jumlah/Poin Kesalahan</th>
                                     </tr>
                                 </thead>
@@ -85,14 +138,8 @@
                                     <tr class="hover:bg-gray-100">
                                         <td class="px-4 py-2 border-r">{{ detail.tanggal }}</td>
                                         <td class="px-4 py-2 border-r text-center font-medium">{{ detail.tipe }}</td>
-                                        
-                                        {# KOREKSI: Tampilkan data Point DP di detail #}
                                         <td class="px-4 py-2 border-r text-center">{{ detail.point_dp | format_number }}</td>
-                                        
-                                        {# KOREKSI: Tampilkan data Point WD di detail #}
                                         <td class="px-4 py-2 border-r text-center">{{ detail.point_wd | format_number }}</td>
-                                        
-                                        {# Jumlah/Poin Kesalahan (tetap integer) #}
                                         <td class="px-4 py-2 text-right font-mono text-red-500">
                                             {{ detail.jumlah | int }}
                                         </td>
@@ -107,19 +154,19 @@
                 
                 {% endfor %}
             </tbody>
-            {# Hapus tag <tfoot> lama di sini #}
         </table>
     </div>
 </div>
 <script>
+    // Logika JavaScript (Filter/Toggle) tidak perlu diubah, tetap sama seperti sebelumnya
     document.addEventListener('DOMContentLoaded', function () {
+        // Logika Toggle Detail (Tidak Berubah)
         document.querySelectorAll('.toggle-details').forEach(button => {
             button.addEventListener('click', function() {
                 const targetId = this.getAttribute('data-target');
                 const detailsRow = document.getElementById(targetId);
                 
                 if (detailsRow) {
-                    // Toggle visibility of the details row
                     if (detailsRow.classList.contains('hidden')) {
                         detailsRow.classList.remove('hidden');
                         this.querySelector('.open-icon').classList.add('hidden');
@@ -132,6 +179,54 @@
                 }
             });
         });
+
+        // Fungsi Filter Pencarian (Ditambahkan)
+        window.filterTable = function() {
+            const input = document.getElementById('search-input');
+            const filter = input.value.toUpperCase();
+            const table = document.getElementById('kesalahanTable');
+            const tr = table.getElementsByClassName('staff-row'); // Hanya cari di baris utama staf
+            
+            for (let i = 0; i < tr.length; i++) {
+                // Kolom Nama Staf (Indeks 2) dan No Passport (Indeks 1)
+                const nameTd = tr[i].getElementsByTagName('td')[2];
+                const passportTd = tr[i].getElementsByTagName('td')[1];
+
+                if (nameTd || passportTd) {
+                    const nameText = nameTd ? nameTd.textContent || nameTd.innerText : '';
+                    const passportText = passportTd ? passportTd.textContent || passportTd.innerText : '';
+
+                    if (nameText.toUpperCase().indexOf(filter) > -1 || passportText.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                        // Sembunyikan juga baris detail jika baris utama disembunyikan
+                        const detailRowId = tr[i].getAttribute('data-staff-id').replace('staff-', 'details-');
+                        const detailRow = document.getElementById(detailRowId);
+                        if(detailRow) {
+                            detailRow.style.display = "none";
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Atur ulang tampilan baris detail yang tersembunyi/ditampilkan setelah pencarian dihapus
+        document.getElementById('search-input').addEventListener('input', function() {
+            if (this.value.length === 0) {
+                 const table = document.getElementById('kesalahanTable');
+                 const tr = table.getElementsByClassName('staff-row');
+                 for (let i = 0; i < tr.length; i++) {
+                     const detailRowId = tr[i].getAttribute('data-staff-id').replace('staff-', 'details-');
+                     const detailRow = document.getElementById(detailRowId);
+                     if(detailRow) {
+                         detailRow.style.display = ""; 
+                     }
+                 }
+            }
+        });
+
+        
     });
 </script>
 {% else %}
