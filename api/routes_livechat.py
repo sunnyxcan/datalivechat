@@ -20,6 +20,7 @@ from .routes_main import get_all_sheet_names
 
 # =========================================================================
 # FUNGSI UNTUK PERHITUNGAN KESALAHAN STAFF DARI DATA KESALAHAN
+# (Tidak ada perubahan, hanya untuk kelengkapan)
 # =========================================================================
 
 def calculate_staff_errors_from_kesalahan(kesalahan_data_all, staff_list):
@@ -189,6 +190,7 @@ def calculate_staff_errors_from_kesalahan(kesalahan_data_all, staff_list):
 
 # =========================================================================
 # FUNGSI PEMBANTU UNTUK FILTER BULAN BERBASIS DELIMITER
+# (Tidak ada perubahan, hanya untuk kelengkapan)
 # =========================================================================
 
 def is_date_string(date_str, format_list=['%d/%m/%Y', '%d/%m/%y']): 
@@ -229,6 +231,7 @@ def get_delimiter_indexes(kesalahan_data):
     return delimiter_map
 
 def filter_kesalahan_by_month(kesalahan_data, month_filter):
+    # LOGIKA INI SUDAH BENAR: Jika 'all' atau None, kembalikan semua data.
     if not month_filter or month_filter.lower() == 'all':
         return kesalahan_data
         
@@ -324,12 +327,11 @@ def get_available_months(kesalahan_data):
 
 
 # =========================================================================
-# ROUTE LIVECHAT (show_summary_livechat)
+# ROUTE LIVECHAT (show_summary_livechat) - MODIFIED
 # =========================================================================
 
 @app.route(f'/{SUMMARY_LIVECHAT_ROUTE}')
 @app.route(f'/{SUMMARY_LIVECHAT_ROUTE}/<month_filter>') 
-# Ubah default 'all' menjadi None. Jika route dipanggil tanpa filter, month_filter adalah None.
 def show_summary_livechat(month_filter=None): 
     if SHEETS_SERVICE is None:
         return redirect(url_for('home'))
@@ -341,7 +343,7 @@ def show_summary_livechat(month_filter=None):
     leader_mapped_sites_uppercase = {k.upper(): v for k, v in leader_mapping.items()}
     sites_for_batch_read = list({name.upper() for name in sheets_to_process if name.upper() in leader_mapped_sites_uppercase})
 
-    # Siapkan ranges, combined_ranges, num_sites (Kode ini tetap sama)
+    # Siapkan ranges, combined_ranges, num_sites
     ranges_to_get_kesalahan = [f"'{sheet_name}'!{LIVECHAT_RANGE_KESALAHAN}" for sheet_name in sites_for_batch_read]
     ranges_to_get_staff = [f"'{sheet_name}'!{LIVECHAT_RANGE_STAFF}" for sheet_name in sites_for_batch_read]
     combined_ranges = ranges_to_get_kesalahan + ranges_to_get_staff
@@ -349,12 +351,11 @@ def show_summary_livechat(month_filter=None):
     
     batch_results = get_batch_sheet_data(SHEETS_SERVICE, combined_ranges, LIVECHAT_SPREADSHEET_ID)
 
-    # Inisialisasi map (Kode ini tetap sama)
     site_errors_map = {} 
     staff_total_map_per_site = {} 
     available_months_set = set()
     
-    # 1. Iterasi dan Filter Data Kesalahan (Mencari Semua Bulan yang Tersedia)
+    # 1. Kumpulkan semua bulan yang tersedia
     for i, sheet_name_upper in enumerate(sites_for_batch_read):
         raw_error_data_range = batch_results[i]
         filtered_kesalahan_data_raw = raw_error_data_range.get('values', [])
@@ -362,11 +363,10 @@ def show_summary_livechat(month_filter=None):
         if filtered_kesalahan_data_raw and len(filtered_kesalahan_data_raw) > 0:
             kesalahan_data_raw_no_header = filtered_kesalahan_data_raw[1:]
             
-            # Kumpulkan semua bulan yang tersedia dari semua sheets
             current_months = get_available_months(kesalahan_data_raw_no_header)
             available_months_set.update(current_months)
 
-    # Sortir bulan yang tersedia untuk ditampilkan
+    # Sortir bulan yang tersedia
     try:
         final_available_months = sorted(
             list(available_months_set), 
@@ -376,60 +376,61 @@ def show_summary_livechat(month_filter=None):
     except ValueError:
         final_available_months = sorted(list(available_months_set), reverse=True)
 
+    # Tambahkan opsi 'all' ke daftar bulan yang tersedia (untuk ditampilkan di dropdown)
+    if 'all' not in final_available_months:
+        final_available_months.insert(0, 'all')
+        
+    latest_month = final_available_months[1] if len(final_available_months) > 1 else 'all'
+
     # =======================================================
-    # LOGIKA DEFAULT BULAN INI (BULAN TERBARU) - MODIFIKASI INTI
+    # LOGIKA FINAL UNTUK PENENTUAN FILTER SUMMARY
     # =======================================================
-    # Jika month_filter adalah None (dari route tanpa filter) atau 'all', 
-    # gunakan bulan terbaru yang tersedia sebagai filter yang sebenarnya.
     
-    # 1. Tentukan filter aktual untuk perhitungan data
-    actual_month_filter = month_filter
-    if not actual_month_filter or actual_month_filter.lower() == 'all':
-        actual_month_filter = final_available_months[0] if final_available_months else 'all'
-    
-    # 2. Tentukan nilai filter yang akan ditampilkan di dropdown (Display)
-    current_month_filter_display = actual_month_filter
-    # Jika filter yang asli adalah None/'all', tampilkan bulan terbaru yang digunakan untuk perhitungan
-    if not month_filter or month_filter.lower() == 'all':
-        current_month_filter_display = actual_month_filter
-    else:
+    # A. Tentukan filter yang akan digunakan untuk perhitungan data (actual_month_filter_for_calc)
+    if not month_filter: # URL default: /livechat_summary
+        # Default: Paksa ke bulan terbaru untuk beban default yang ringan
+        actual_month_filter_for_calc = latest_month
+        current_month_filter_display = latest_month # Bulan terbaru terpilih di dropdown
+    elif month_filter.lower() == 'all': # URL: /livechat_summary/all
+        # Sesuai permintaan: MEMUAT SEMUA DATA
+        actual_month_filter_for_calc = 'all'
+        current_month_filter_display = 'all' # Opsi 'all' terpilih
+    else: # URL: /livechat_summary/08-2025
+        actual_month_filter_for_calc = month_filter
         current_month_filter_display = month_filter
-    
-    
+        
+    # Memastikan current_month_filter_display adalah salah satu yang valid
+    if current_month_filter_display not in final_available_months:
+        current_month_filter_display = latest_month # Fallback ke bulan terbaru
+
     # 3. Iterasi Ulang dan Hitung Total Menggunakan Filter yang Tepat
     for i, sheet_name_upper in enumerate(sites_for_batch_read):
         
-        # Ambil Data Kesalahan Mentah (Index i) - Data sudah di-fetch di langkah 1
         raw_error_data_range = batch_results[i]
         filtered_kesalahan_data_raw = raw_error_data_range.get('values', [])
         
         if filtered_kesalahan_data_raw and len(filtered_kesalahan_data_raw) > 0:
             kesalahan_data_raw_no_header = filtered_kesalahan_data_raw[1:]
             
-            # Filter data berdasarkan actual_month_filter
-            kesalahan_data_filtered_by_month = filter_kesalahan_by_month(kesalahan_data_raw_no_header, actual_month_filter)
+            # Filter data berdasarkan actual_month_filter_for_calc
+            kesalahan_data_filtered_by_month = filter_kesalahan_by_month(kesalahan_data_raw_no_header, actual_month_filter_for_calc)
             
-            # Ambil Data Staf Mentah (Index i + num_sites)
             raw_staff_data_range = batch_results[i + num_sites]
             staff_data_raw = raw_staff_data_range.get('values', [])
             staff_list_for_calc = []
             if staff_data_raw and len(staff_data_raw) > 1:
                 staff_list_for_calc = [row for row in staff_data_raw[1:] if row and row[0].strip()]
 
-            # Hitung total kesalahan per staf menggunakan data kesalahan yang sudah difilter
             if staff_list_for_calc:
                 _, staff_rows_calculated, total_kesalahan_situs = calculate_staff_errors_from_kesalahan(
                     kesalahan_data_filtered_by_month, staff_list_for_calc 
                 )
                 
-                # Update ringkasan situs
                 site_errors_map[sheet_name_upper] = total_kesalahan_situs
                 
-                # Kumpulkan detail staf untuk perhitungan grand summary
                 staff_total_map_per_site[sheet_name_upper] = {}
                 for row in staff_rows_calculated:
                     staff_name = row[0].strip().upper()
-                    # Ambil nilai total kesalahan (kolom kedua)
                     total_str = row[1].replace('.', '') 
                     staff_total_map_per_site[sheet_name_upper][staff_name] = int(total_str) if total_str.isdigit() else 0
                 
@@ -440,17 +441,21 @@ def show_summary_livechat(month_filter=None):
 
     # 4. Agregasi Hasil Perhitungan (Situs, Staf, Leader)
     
+    # Filter bulan untuk link detail situs: 
+    # Jika ringkasan menampilkan 'all', link detail situs harus default ke bulan terbaru untuk menghindari beban berlebih.
+    month_filter_for_detail_link = actual_month_filter_for_calc
+    if month_filter_for_detail_link == 'all':
+        month_filter_for_detail_link = latest_month
+    
     grand_total = sum(site_errors_map.values())
     all_sites_map = {}
     
     for site_upper, total in site_errors_map.items():
-        # Pastikan link ke detail situs menggunakan filter yang AKTIF (actual_month_filter)
         all_sites_map[site_upper] = {
             'total': total,
-            'url': url_for('show_data', sheet_name=site_upper, month_filter=actual_month_filter) 
+            # Link detail situs menggunakan bulan terbaru jika ringkasan saat ini adalah 'all'
+            'url': url_for('show_data', sheet_name=site_upper, month_filter=month_filter_for_detail_link) 
         }
-
-    # ... (Kode agregasi summary_data, staff_summary, dan leader_summary tetap sama) ...
 
     summary_data = [] 
     for site_upper, details in all_sites_map.items():
@@ -476,7 +481,6 @@ def show_summary_livechat(month_filter=None):
                      'total': total
                    })
                    
-    # ... (lanjutan agregasi staff) ...
     all_staff_names_from_leaders = {name.strip().upper() for name in leader_mapping.values()}
     all_staff_names_from_leaders.update(staff_summary_map_total.keys())
     
@@ -568,18 +572,18 @@ def show_summary_livechat(month_filter=None):
                             leader_grand_total=leader_grand_total,
                             title_prefix='Data Kesalahan Livechat',
                             available_months=final_available_months, 
-                            # Menggunakan 'current_month_filter_display' agar dropdown menampilkan bulan yang difilter
+                            # Menggunakan 'current_month_filter_display'
                             current_month_filter=current_month_filter_display 
                             )
 
 
 # =========================================================================
-# ROUTE LIVECHAT (show_data - MENGGUNAKAN FILTER BULAN BARU)
+# ROUTE LIVECHAT (show_data) - MODIFIED
 # =========================================================================
 
 @app.route('/<sheet_name>')
 @app.route('/<sheet_name>/<month_filter>') 
-def show_data(sheet_name, month_filter='all'): # month_filter defaultnya adalah 'all'
+def show_data(sheet_name, month_filter=None): 
     if SHEETS_SERVICE is None:
         return redirect(url_for('home'))
 
@@ -597,11 +601,11 @@ def show_data(sheet_name, month_filter='all'): # month_filter defaultnya adalah 
     staff_rows = []
     total_kesalahan_staff = 0
     available_months = [] 
+    latest_month = None # Inisialisasi
 
     # Logika untuk sheet khusus tetap sama
     if sheet_name in sheet_khusus:
         # ... (Logika untuk sheet khusus tetap sama) ...
-        # ... (Penghitungan dan pengisian variabel tetap sama) ...
         range_kesalahan = sheet_khusus[sheet_name]
         kesalahan_data_all = get_sheet_data(
             SHEETS_SERVICE, sheet_name, range_kesalahan, expected_columns=3, spreadsheet_id=LIVECHAT_SPREADSHEET_ID
@@ -610,9 +614,11 @@ def show_data(sheet_name, month_filter='all'): # month_filter defaultnya adalah 
         kesalahan_data_filtered = kesalahan_data_all
         total_kesalahan_staff = len(kesalahan_data_filtered)
         
-        # Inisialisasi available_months untuk sheet khusus jika diperlukan
         if kesalahan_data_all:
              available_months = get_available_months(kesalahan_data_all)
+        
+        # Karena ini sheet khusus, tidak perlu penanganan 'all' yang kompleks
+        current_filter_to_display = month_filter if month_filter else 'all' 
         
     else:
         ranges_for_sheet = [
@@ -627,25 +633,33 @@ def show_data(sheet_name, month_filter='all'): # month_filter defaultnya adalah 
             row for row in batch_0 if any(cell and cell.strip() for cell in row)
         ]
 
-        # Inisialisasi bulan terbaru
-        latest_month = None
         
         if filtered_kesalahan_data_raw:
             kesalahan_data_raw_no_header = filtered_kesalahan_data_raw[1:] 
             available_months = get_available_months(kesalahan_data_raw_no_header)
             
+            # Tambahkan opsi 'all' untuk ditampilkan di dropdown detail
+            if 'all' not in available_months:
+                 available_months.insert(0, 'all')
+            
             # Tentukan bulan terbaru
-            if available_months:
-                latest_month = available_months[0]
+            latest_month = available_months[1] if len(available_months) > 1 else 'all'
 
             # =======================================================
             # MODIFIKASI INTI: Tentukan filter yang akan digunakan untuk data
             # =======================================================
-            actual_month_filter = month_filter
-            if month_filter.lower() == 'all' and latest_month:
-                # Jika filter di URL adalah 'all' atau tidak ada (default), 
-                # gunakan bulan terbaru untuk memfilter data.
+            if not month_filter: # URL default: /namasitus
+                # Default: Paksa ke bulan terbaru 
                 actual_month_filter = latest_month
+                current_filter_to_display = latest_month # Bulan terbaru terpilih di dropdown
+            elif month_filter.lower() == 'all': # URL: /namasitus/all
+                # Sesuai permintaan: MEMUAT SEMUA DATA
+                actual_month_filter = 'all'
+                current_filter_to_display = 'all' # Opsi 'all' terpilih
+            else: # URL: /namasitus/08-2025
+                actual_month_filter = month_filter
+                current_filter_to_display = month_filter
+
             
             # Gunakan actual_month_filter untuk memfilter data
             kesalahan_data_for_calc = filter_kesalahan_by_month(kesalahan_data_raw_no_header, actual_month_filter)
@@ -658,7 +672,8 @@ def show_data(sheet_name, month_filter='all'): # month_filter defaultnya adalah 
         else:
             kesalahan_data_all = []
             kesalahan_data_filtered = []
-            available_months = []
+            available_months = ['all']
+            current_filter_to_display = 'all'
         
         # ... (Logika staff data tetap sama) ...
 
@@ -681,16 +696,13 @@ def show_data(sheet_name, month_filter='all'): # month_filter defaultnya adalah 
             staff_headers = staff_data_raw[0] if staff_data_raw else []
             total_kesalahan_staff = 0
             staff_rows = []
+            
+    # Akhir dari blok else (untuk non-sheet khusus)
+            
+    # Memastikan current_filter_to_display valid
+    if current_filter_to_display not in available_months:
+        current_filter_to_display = available_months[0] if available_months else 'all'
 
-    # =======================================================
-    # MODIFIKASI TERAKHIR: Tentukan nilai yang akan di-select di dropdown (Template)
-    # =======================================================
-    current_filter_to_display = month_filter
-    if month_filter.lower() == 'all' and latest_month:
-        # Jika filter di URL adalah 'all', tapi data yang tampil adalah bulan terbaru, 
-        # maka kirim bulan terbaru sebagai filter aktif ke template.
-        current_filter_to_display = latest_month
-        
     return render_template('index.html',
                            kesalahan_headers=kesalahan_headers,
                            kesalahan_data=kesalahan_data_filtered, 

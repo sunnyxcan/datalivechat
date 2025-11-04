@@ -1,4 +1,4 @@
-{# summary_livechat.html - Tidak perlu extends base.html, akan di-include #}
+{# summary_livechat.html #}
 
 <div class="flex flex-wrap gap-5 mb-10 items-start">
 
@@ -11,22 +11,25 @@
                 <select id="month-filter" 
                         class="border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
                     
-                    {# Opsi Default: Semua Data #}
-                    <option value="{{ url_for('show_summary_livechat') }}"
+                    {# Opsi Default: Semua Data - DIGANTI DENGAN month_filter='all' #}
+                    <option value="{{ url_for('show_summary_livechat', month_filter='all') }}"
                             {% if current_month_filter == 'all' %}selected{% endif %}>
                         Semua Data
                     </option>
 
                     {# Opsi Bulan Tersedia #}
                     {% for month in available_months %}
-                        {% set month_parts = month.split('-') %}
-                        {% set formatted_month = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
-                                                "Juli", "Agustus", "September", "Oktober", "November", "Desember"][(month_parts[0] | int) - 1] ~ " " ~ month_parts[1] %}
-                        
-                        <option value="{{ url_for('show_summary_livechat', month_filter=month) }}"
-                                {% if current_month_filter == month %}selected{% endif %}>
-                            {{ formatted_month }}
-                        </option>
+                        {# HANYA tampilkan bulan (MM-YYYY), abaikan 'all' yang dimasukkan di Python #}
+                        {% if month != 'all' %}
+                            {% set month_parts = month.split('-') %}
+                            {% set formatted_month = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+                                                      "Juli", "Agustus", "September", "Oktober", "November", "Desember"][(month_parts[0] | int) - 1] ~ " " ~ month_parts[1] %}
+                            
+                            <option value="{{ url_for('show_summary_livechat', month_filter=month) }}"
+                                    {% if current_month_filter == month %}selected{% endif %}>
+                                {{ formatted_month }}
+                            </option>
+                        {% endif %}
                     {% endfor %}
 
                 </select>
