@@ -82,7 +82,7 @@
             </thead>
             
             <tbody class="bg-white divide-y divide-gray-200">
-                {% for rekap in rekap_per_situs_data %}
+                {% for rekap in rekap_per_situs_data | sort(attribute='point_total', reverse=True) %}
                 <tr class="hover:bg-blue-50">
                     <td data-label="NO." class="px-3 py-4 whitespace-nowrap text-center text-sm font-medium text-gray-900">
                         {{ loop.index }}

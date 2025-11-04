@@ -70,7 +70,7 @@
             <h2 class="text-2xl font-semibold text-gray-800">Data Staff</h2>
             {%- if total_kesalahan_staff is not none -%}
             <div class="text-lg font-bold text-red-600 bg-red-100 px-3 py-1 rounded-full shadow-md">
-                TOTAL KESALAHAN: {{- total_kesalahan_staff | format_number -}}
+                TOTAL KESALAHAN:  {{- total_kesalahan_staff | format_number -}}
             </div>
             {%- endif -%}
         </div>
@@ -95,8 +95,7 @@
                         {%- for cell in row -%}
                         <td class="px-6 py-3 whitespace-nowrap align-top
                             {%- if loop.index == 1 -%}
-                                lg:lg-sticky-col-cell 
-                                font-semibold text-gray-900
+                                **lg:sticky-col-cell** font-semibold text-gray-900
                                 {%- if loop.cycle('odd', 'even') == 'odd' -%}lg:bg-white{%- else -%}lg:bg-gray-50{%- endif -%}
                             {%- endif -%}
                             {%- if loop.index == 2 -%}text-center font-bold text-red-600{%- endif -%}">
